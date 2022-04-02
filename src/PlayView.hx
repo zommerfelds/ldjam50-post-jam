@@ -1,4 +1,21 @@
+import motion.Actuate;
 import h2d.col.Point;
+
+enum CardType {
+	Track;
+	Station;
+	Money;
+}
+
+class Card {
+	public function new(type, obj) {
+		this.type = type;
+		this.obj = obj;
+	}
+
+	public final type:CardType;
+	public final obj:h2d.Object;
+}
 
 class PlayView extends GameState {
 	static final LAYER_MAP = 0;
@@ -10,6 +27,15 @@ class PlayView extends GameState {
 
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
+
+	final handCards = [];
+
+	final tileCardTrack = hxd.Res.card_track.toTile();
+	final tileCardMoney = hxd.Res.card_money.toTile();
+	final tileCardStation = hxd.Res.card_station.toTile();
+
+	final CARD_WIDTH = 21;
+	final CARD_HEIGHT = 31;
 
 	override function init() {
 		// Set up fixed camera for UI elements.
@@ -42,7 +68,61 @@ class PlayView extends GameState {
 
 		addChild(drawGr);
 
-		addChildAt(fpsText, LAYER_UI);
+		tileCardTrack.setCenterRatio();
+		tileCardMoney.setCenterRatio();
+		tileCardStation.setCenterRatio();
+
+		handCards.push(makeCard(Track));
+		handCards.push(makeCard(Money));
+		handCards.push(makeCard(Track));
+		handCards.push(makeCard(Station));
+		handCards.push(makeCard(Station));
+		arrangeHand();
+
+		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
+			addChildAt(fpsText, LAYER_UI);
+		}
+	}
+
+	function makeCard(type:CardType) {
+		final obj = new h2d.Bitmap(switch (type) {
+			case Track: tileCardTrack;
+			case Station: tileCardStation;
+			case Money: tileCardMoney;
+		});
+		obj.scale(20);
+		obj.x = width / 2;
+		obj.y = height / 2;
+
+		final interactive = new h2d.Interactive(CARD_WIDTH, CARD_HEIGHT, obj);
+		interactive.x = -CARD_WIDTH / 2;
+		interactive.y = -CARD_HEIGHT / 2;
+		interactive.onClick = (e) -> {
+			trace("Touched " + type);
+		};
+
+		final card = new Card(type, obj);
+
+		addChildAt(obj, LAYER_UI);
+
+		return card;
+	}
+
+	function arrangeHand() {
+		var i = 0;
+		for (card in handCards) {
+			Actuate.tween(card.obj, 3, {
+				x: width * (0.2 + i / (handCards.length - 1) * 0.6),
+				y: height * 0.85,
+				rotation: (i / (handCards.length - 1) - 0.5) * Math.PI * 0.2,
+			}).onUpdate(() -> posUpdated(card.obj));
+			i++;
+		}
+	}
+
+	function posUpdated(obj:h2d.Object) {
+		// Tween is not smart enough to call the setter.
+		obj.x = obj.x;
 	}
 
 	function onMapEvent(event:hxd.Event) {
@@ -105,6 +185,10 @@ class PlayView extends GameState {
 		drawMap();
 
 		fpsText.text = "FPS: " + Math.round(hxd.Timer.fps());
+		// Actuate.isActive();
+		// Actuate.defaultActuator;
+		// trackCard.y = trackCard.y;
+		// trackCard.sync();
 	}
 
 	function drawMap() {

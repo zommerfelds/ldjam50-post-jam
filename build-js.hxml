@@ -6,6 +6,7 @@
 --dce full
 
 -lib heaps:1.9.0
+-lib actuate:1.8.9
 
 -D js-source-map
 
