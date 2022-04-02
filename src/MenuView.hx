@@ -10,8 +10,7 @@ class MenuView extends GameState {
 		centeringFlow.layout = Vertical;
 		centeringFlow.verticalSpacing = Gui.scaleAsInt(50);
 
-		new Gui.Text("Wellcome to...", centeringFlow, 0.8);
-		new Gui.Text("Yet Another Game!", centeringFlow);
+		new Gui.Text("Trains & Cards", centeringFlow);
 
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 
@@ -22,8 +21,6 @@ class MenuView extends GameState {
 		new Gui.TextButton(centeringFlow, "Start game", () -> {
 			App.instance.switchState(new PlayView());
 		}, Gui.Colors.BLUE, 0.8);
-
-		new Gui.Text("Highscore: " + App.loadHighScore(), centeringFlow, 0.8);
 
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 

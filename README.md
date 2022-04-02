@@ -2,4 +2,4 @@
 
 [Live demo](https://zommerfelds.github.io/ldjam50/)
 
-Based on https://github.com/zommerfelds/gamejam-template (see for instructions).
+Based on [this template](https://github.com/zommerfelds/gamejam-template).
