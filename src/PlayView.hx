@@ -1,5 +1,6 @@
 import motion.Actuate;
 import h2d.col.Point;
+import RenderUtils.*;
 
 enum CardType {
 	Track;
@@ -24,9 +25,17 @@ class PlayView extends GameState {
 	final points = [];
 	final tracks = [];
 	final houses = [];
+	var trackUnderConstruction:{
+		start:Point,
+		end:Point,
+		cost:Int,
+		paid:Int,
+		cards:Array<Card>,
+	} = null;
 
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
+	final constructionCardPlaceholders:Array<h2d.Bitmap> = [];
 
 	final handCards:Array<Card> = [];
 
@@ -53,18 +62,18 @@ class PlayView extends GameState {
 
 		final rand = new hxd.Rand(/* seed= */ 10);
 
-		points.push(new Point(-100, -700));
-		points.push(new Point(1000, 500));
-		points.push(new Point(800, 2000));
+		points.push(new Point(-400, -700));
+		points.push(new Point(400, 700));
+		// points.push(new Point(800, 2000));
 
 		for (i in -10...10) {
 			for (j in -10...10) {
-				houses.push(new Point((i + rand.rand()) * 700, (j + rand.rand()) * 700));
+				houses.push(new Point((i + rand.rand()) * 1000, (j + rand.rand()) * 1000));
 			}
 		}
 
 		tracks.push({start: 0, end: 1});
-		tracks.push({start: 1, end: 2});
+		// tracks.push({start: 1, end: 2});
 
 		addChild(drawGr);
 
@@ -82,6 +91,14 @@ class PlayView extends GameState {
 		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
 			addChildAt(fpsText, LAYER_UI);
 		}
+
+		for (i in 0...5) {
+			final placeholder = new h2d.Bitmap(tileCardTrack, this);
+			placeholder.scale(Gui.scale(2));
+			placeholder.alpha = 0.5;
+			placeholder.visible = false;
+			constructionCardPlaceholders.push(placeholder);
+		}
 	}
 
 	function makeCard(type:CardType) {
@@ -93,6 +110,8 @@ class PlayView extends GameState {
 		obj.scale(Gui.scale(5));
 		obj.x = width / 2;
 		obj.y = height / 2;
+
+		final card = new Card(type, obj);
 
 		final interactive = new h2d.Interactive(CARD_WIDTH, CARD_HEIGHT, obj);
 		interactive.x = -CARD_WIDTH / 2;
@@ -107,11 +126,51 @@ class PlayView extends GameState {
 			});
 		};
 		interactive.onRelease = (e) -> {
-			stopCapture();
-			arrangeHand();
-		};
+			var pt = new Point(e.relX, e.relY);
+			pt = interactive.localToGlobal(pt);
+			camera.screenToCamera(pt);
 
-		final card = new Card(type, obj);
+			if (trackUnderConstruction != null && card.type == Track && trackUnderConstruction.paid < trackUnderConstruction.cost) {
+				final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
+				if (Utils.toPoint(placeholder).distance(pt) < 450) {
+					trace("Building track!");
+					handCards.remove(card);
+
+					trackUnderConstruction.cards.push(card);
+
+					// Move to map layer.
+					obj.remove();
+					addChild(obj);
+
+					var cardPos = Utils.toPoint(card.obj);
+					camera.screenToCamera(cardPos);
+					card.obj.x = cardPos.x;
+					card.obj.y = cardPos.y;
+
+					trackUnderConstruction.paid++;
+
+					Actuate.tween(card.obj, 1.0, {
+						x: placeholder.x,
+						y: placeholder.y,
+						scaleX: placeholder.scaleX,
+						scaleY: placeholder.scaleY,
+					}).onUpdate(() -> posUpdated(card.obj)).onComplete(() -> {
+						if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
+							points.push(trackUnderConstruction.start);
+							points.push(trackUnderConstruction.end);
+							tracks.push({start: points.length - 2, end: points.length - 1});
+							for (card in trackUnderConstruction.cards) {
+								card.obj.remove();
+							}
+							trackUnderConstruction = null;
+						}
+					});
+				}
+			}
+			arrangeHand();
+
+			stopCapture();
+		};
 
 		addChildAt(obj, LAYER_UI);
 
@@ -150,11 +209,16 @@ class PlayView extends GameState {
 					closestPoint = closestPointTrack;
 				}
 			}
-			final addingTrack = (closestPoint.distance(pt) < 100);
+			// For now you can't stop a construction in progress.
+			final addingTrack = (closestPoint.distance(pt) < 100 && (trackUnderConstruction == null || trackUnderConstruction.paid == 0));
 			if (addingTrack) {
-				points.push(closestPoint);
-				points.push(pt);
-				tracks.push({start: points.length - 2, end: points.length - 1});
+				trackUnderConstruction = {
+					start: closestPoint,
+					end: pt,
+					cost: 1,
+					paid: 0,
+					cards: [],
+				};
 			}
 
 			final startDragPos = new Point(event.relX, event.relY);
@@ -166,7 +230,13 @@ class PlayView extends GameState {
 				camera.screenToCamera(pt);
 
 				if (addingTrack) {
-					points[points.length - 1] = pt.clone();
+					final newCost = Math.ceil(trackUnderConstruction.start.distance(pt) / 400);
+					if (newCost <= 5) {
+						trackUnderConstruction.end = pt.clone();
+						trackUnderConstruction.cost = newCost;
+					}
+
+					// points[points.length - 1] = pt.clone();
 				} else {
 					// Moving camera
 					camera.x += lastDragPos.x - event.relX;
@@ -199,55 +269,63 @@ class PlayView extends GameState {
 		drawGr.beginFill(0x509450);
 		drawGr.drawRect(-10000, -10000, 20000, 20000);
 
-		drawGr.beginFill(0x382c26);
-		for (point in points) {
-			drawGr.drawCircle(point.x, point.y, 35);
-		}
-
-		drawGr.endFill();
-		drawGr.lineStyle(15, 0x662d0e);
-
-		for (track in tracks) {
-			final start = points[track.start];
-			final end = points[track.end];
-			final dir = end.sub(start).normalized();
-			final offset = dir.multiply(30);
-			offset.rotate(0.5 * Math.PI);
-
-			var pos = start.add(dir.multiply(25));
-			while (pos.distance(start) + 25 < end.distance(start)) {
-				final plankLeft = pos.add(offset.multiply(1.5));
-				final plankRight = pos.sub(offset.multiply(1.5));
-				drawGr.moveTo(plankLeft.x, plankLeft.y);
-				drawGr.lineTo(plankRight.x, plankRight.y);
-				pos = pos.add(dir.multiply(25));
-			}
-		}
-
-		drawGr.lineStyle(10, 0x000000);
-		for (track in tracks) {
-			final start = points[track.start];
-			final end = points[track.end];
-			final dir = end.sub(start).normalized();
-			final offset = dir.multiply(30);
-			offset.rotate(0.5 * Math.PI);
-
-			final rail1Start = start.add(offset);
-			final rail1End = end.add(offset);
-			drawGr.moveTo(rail1Start.x, rail1Start.y);
-			drawGr.lineTo(rail1End.x, rail1End.y);
-			final rail2Start = start.sub(offset);
-			final rail2End = end.sub(offset);
-			drawGr.moveTo(rail2Start.x, rail2Start.y);
-			drawGr.lineTo(rail2End.x, rail2End.y);
-		}
-
 		drawGr.beginFill(0xc79f1a);
 		drawGr.lineStyle();
 		for (house in houses) {
 			final w = 140;
 			final h = 200;
 			drawGr.drawRect(house.x - w / 2, house.y - h / 2, w, h);
+		}
+
+		drawGr.beginFill(0x382c26);
+		for (point in points) {
+			drawGr.drawCircle(point.x, point.y, 35);
+		}
+		if (trackUnderConstruction != null) {
+			drawGr.drawCircle(trackUnderConstruction.start.x, trackUnderConstruction.start.y, 35);
+			drawGr.drawCircle(trackUnderConstruction.end.x, trackUnderConstruction.end.y, 35);
+		}
+
+		drawGr.endFill();
+		drawGr.lineStyle(15, 0x662d0e);
+		for (track in tracks) {
+			drawRailroadTies(drawGr, points[track.start], points[track.end]);
+		}
+		if (trackUnderConstruction != null) {
+			drawGr.lineStyle(15, 0x662d0e, 0.4);
+			drawRailroadTies(drawGr, trackUnderConstruction.start, trackUnderConstruction.end);
+		}
+
+		drawGr.lineStyle(10, 0x000000);
+		for (track in tracks) {
+			drawRails(drawGr, points[track.start], points[track.end]);
+		}
+		for (placeholder in constructionCardPlaceholders) {
+			placeholder.visible = false;
+		}
+		if (trackUnderConstruction != null) {
+			drawGr.lineStyle(10, 0x000000, 0.4);
+			drawRails(drawGr, trackUnderConstruction.start, trackUnderConstruction.end);
+
+			drawGr.beginFill(0x706362);
+			drawGr.lineStyle();
+
+			final offsetY = 80;
+			final triangleSize = 30;
+			final placeholderWidth = constructionCardPlaceholders[0].getBounds().width;
+			final w = (placeholderWidth + Gui.scale(10)) * trackUnderConstruction.cost + Gui.scale(10);
+			final h = constructionCardPlaceholders[0].getBounds().height + Gui.scale(20);
+			final popup = trackUnderConstruction.start.add(trackUnderConstruction.end).multiply(0.5);
+			drawGr.drawRect(popup.x - w / 2, popup.y + offsetY + triangleSize, w, h);
+			drawGr.moveTo(popup.x, popup.y + offsetY);
+			drawGr.lineTo(popup.x - triangleSize, popup.y + offsetY + triangleSize);
+			drawGr.lineTo(popup.x + triangleSize, popup.y + offsetY + triangleSize);
+
+			for (i in 0...trackUnderConstruction.cost) {
+				constructionCardPlaceholders[i].visible = true;
+				constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) + i * (placeholderWidth + Gui.scale(10));
+				constructionCardPlaceholders[i].y = popup.y + offsetY + triangleSize + h / 2;
+			}
 		}
 	}
 }
