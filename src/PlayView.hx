@@ -25,6 +25,7 @@ class PlayView extends GameState {
 	final points = [];
 	final tracks = [];
 	final houses = [];
+	final stations = [];
 	var trackUnderConstruction:{
 		start:Point,
 		end:Point,
@@ -36,6 +37,7 @@ class PlayView extends GameState {
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
 	final constructionCardPlaceholders:Array<h2d.Bitmap> = [];
+	var clickedPt = null;
 
 	final handCards:Array<Card> = [];
 
@@ -60,20 +62,7 @@ class PlayView extends GameState {
 
 		addEventListener(onMapEvent);
 
-		final rand = new hxd.Rand(/* seed= */ 10);
-
-		points.push(new Point(-400, -700));
-		points.push(new Point(400, 700));
-		// points.push(new Point(800, 2000));
-
-		for (i in -10...10) {
-			for (j in -10...10) {
-				houses.push(new Point((i + rand.rand()) * 1000, (j + rand.rand()) * 1000));
-			}
-		}
-
-		tracks.push({start: 0, end: 1});
-		// tracks.push({start: 1, end: 2});
+		setUpGameModel();
 
 		addChild(drawGr);
 
@@ -99,6 +88,25 @@ class PlayView extends GameState {
 			placeholder.visible = false;
 			constructionCardPlaceholders.push(placeholder);
 		}
+	}
+
+	function setUpGameModel() {
+		final rand = new hxd.Rand(/* seed= */ 10);
+
+		points.push(new Point(-400, -700));
+		points.push(new Point(400, 700));
+		// points.push(new Point(800, 2000));
+
+		for (i in -10...10) {
+			for (j in -10...10) {
+				houses.push(new Point((i + rand.rand()) * 1000, (j + rand.rand()) * 1000));
+			}
+		}
+
+		tracks.push({start: 0, end: 1});
+		// tracks.push({start: 1, end: 2});
+
+		stations.push(points[0].multiply(0.1).add(points[1].multiply(0.9)));
 	}
 
 	function makeCard(type:CardType) {
@@ -130,42 +138,47 @@ class PlayView extends GameState {
 			pt = interactive.localToGlobal(pt);
 			camera.screenToCamera(pt);
 
-			if (trackUnderConstruction != null && card.type == Track && trackUnderConstruction.paid < trackUnderConstruction.cost) {
-				final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
-				if (Utils.toPoint(placeholder).distance(pt) < 450) {
-					trace("Building track!");
-					handCards.remove(card);
+			switch (card.type) {
+				case Track:
+					if (trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
+						final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
+						if (Utils.toPoint(placeholder).distance(pt) < 450) {
+							trace("Building track!");
+							handCards.remove(card);
 
-					trackUnderConstruction.cards.push(card);
+							trackUnderConstruction.cards.push(card);
 
-					// Move to map layer.
-					obj.remove();
-					addChild(obj);
+							// Move to map layer.
+							obj.remove();
+							addChild(obj);
 
-					var cardPos = Utils.toPoint(card.obj);
-					camera.screenToCamera(cardPos);
-					card.obj.x = cardPos.x;
-					card.obj.y = cardPos.y;
+							var cardPos = Utils.toPoint(card.obj);
+							camera.screenToCamera(cardPos);
+							card.obj.x = cardPos.x;
+							card.obj.y = cardPos.y;
 
-					trackUnderConstruction.paid++;
+							trackUnderConstruction.paid++;
 
-					Actuate.tween(card.obj, 1.0, {
-						x: placeholder.x,
-						y: placeholder.y,
-						scaleX: placeholder.scaleX,
-						scaleY: placeholder.scaleY,
-					}).onUpdate(() -> posUpdated(card.obj)).onComplete(() -> {
-						if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
-							points.push(trackUnderConstruction.start);
-							points.push(trackUnderConstruction.end);
-							tracks.push({start: points.length - 2, end: points.length - 1});
-							for (card in trackUnderConstruction.cards) {
-								card.obj.remove();
-							}
-							trackUnderConstruction = null;
+							Actuate.tween(card.obj, 1.0, {
+								x: placeholder.x,
+								y: placeholder.y,
+								scaleX: placeholder.scaleX,
+								scaleY: placeholder.scaleY,
+							}).onUpdate(() -> posUpdated(card.obj)).onComplete(() -> {
+								if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
+									points.push(trackUnderConstruction.start);
+									points.push(trackUnderConstruction.end);
+									tracks.push({start: points.length - 2, end: points.length - 1});
+									for (card in trackUnderConstruction.cards) {
+										card.obj.remove();
+									}
+									trackUnderConstruction = null;
+								}
+							});
 						}
-					});
-				}
+					}
+				case Station:
+				default:
 			}
 			arrangeHand();
 
@@ -198,9 +211,9 @@ class PlayView extends GameState {
 		event.propagate = false;
 
 		if (event.kind == EPush) {
-			final pt = new Point(event.relX, event.relY);
+			clickedPt = new Point(event.relX, event.relY);
+			final pt = clickedPt.clone();
 			camera.screenToCamera(pt);
-			// clickedLevel = map.findIndex(arch -> arch.pos.sub(new Point(0, -Gui.scale() * 30)).distance(pt) < Gui.scale() * 60);
 
 			var closestPoint = null;
 			for (track in tracks) {
@@ -230,7 +243,7 @@ class PlayView extends GameState {
 				camera.screenToCamera(pt);
 
 				if (addingTrack) {
-					final newCost = Math.ceil(trackUnderConstruction.start.distance(pt) / 400);
+					final newCost = Math.ceil(trackUnderConstruction.start.distance(pt) / 700);
 					if (newCost <= 5) {
 						trackUnderConstruction.end = pt.clone();
 						trackUnderConstruction.cost = newCost;
@@ -243,18 +256,18 @@ class PlayView extends GameState {
 					camera.y += lastDragPos.y - event.relY;
 				}
 
-				/*if (clickedLevel != -1 && startDragPos.distance(new Point(event.relX, event.relY)) > Gui.scale() * 30) {
-					// If we scroll too far, drop a level click action.
-					clickedLevel = -1;
-				}*/
+				if (clickedPt != null && startDragPos.distance(new Point(event.relX, event.relY)) > Gui.scale() * 30) {
+					// If we scroll too far, don't consider this a click.
+					clickedPt = null;
+				}
 
 				lastDragPos = new Point(event.relX, event.relY);
 			});
 		} else if (event.kind == ERelease) {
 			stopCapture();
-			/*if (clickedLevel != -1) {
-				// click!
-			}*/
+			if (clickedPt != null && trackUnderConstruction.paid == 0) {
+				trackUnderConstruction = null;
+			}
 		}
 	}
 
@@ -326,6 +339,12 @@ class PlayView extends GameState {
 				constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) + i * (placeholderWidth + Gui.scale(10));
 				constructionCardPlaceholders[i].y = popup.y + offsetY + triangleSize + h / 2;
 			}
+		}
+
+		drawGr.beginFill(0x735b2f);
+		drawGr.lineStyle();
+		for (station in stations) {
+			drawGr.drawCircle(station.x, station.y, 150);
 		}
 	}
 }
