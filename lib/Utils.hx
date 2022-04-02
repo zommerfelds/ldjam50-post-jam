@@ -4,7 +4,7 @@ import h2d.col.Point;
 class Utils {
 	public static function floatToStr(n:Float, prec = 3) {
 		n = Math.round(n * Math.pow(10, prec));
-		var str = '' + n;
+		var str = '' + n; // TODO: use string builder
 		var len = str.length;
 		if (len <= prec) {
 			while (len < prec) {
@@ -64,16 +64,19 @@ class Utils {
 	}
 
 	public static function distToLineSegment(p:Point, l0:Point, l1:Point) {
+		return p.distance(projectToLineSegment(p, l0, l1));
+	}
+
+	public static function projectToLineSegment(p:Point, l0:Point, l1:Point):Point {
 		// From https://stackoverflow.com/a/1501725/3810493
 		final d2 = l0.distanceSq(l1);
 		if (d2 == 0.0)
-			return p.distance(l0); // l0 == l1 case
+			return l0; // l0 == l1 case
 		// Consider the line extending the segment, parameterized as v + t (w - v).
 		// We find projection of point p onto the line.
 		// It falls where t = [(p-v) . (w-v)] / |w-v|^2
 		// We clamp t from [0,1] to handle points outside the segment vw.
 		final t = Math.max(0, Math.min(1, p.sub(l0).dot(l1.sub(l0)) / d2));
-		final projection = l0.add(l1.sub(l0).multiply(t)); // Projection falls on the segment
-		return p.distance(projection);
+		return l0.add(l1.sub(l0).multiply(t)); // Projection falls on the segment
 	}
 }
