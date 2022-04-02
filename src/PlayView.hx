@@ -49,12 +49,12 @@ class PlayView extends GameState {
 		arrangeHand();
 
 		final deck = new Card(Backside, this, LAYER_UI);
-		deck.homePos.x = Gui.scale(76);
+		deck.homePos.x = Gui.scale(74);
 		deck.homePos.y = height - Gui.scale(252);
 		deck.returnToHomePos();
 		deck.canMove = false;
 		final deck = new Card(Backside, this, LAYER_UI);
-		deck.homePos.x = Gui.scale(78);
+		deck.homePos.x = Gui.scale(77);
 		deck.homePos.y = height - Gui.scale(251);
 		deck.returnToHomePos();
 		deck.canMove = false;
