@@ -1,4 +1,5 @@
 /www/build
+pak.py
 # Haxe res build tmp files:
 .tmp
 

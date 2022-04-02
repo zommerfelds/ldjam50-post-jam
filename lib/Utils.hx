@@ -1,5 +1,6 @@
 import h2d.col.IPoint;
 import h2d.col.Point;
+import motion.Actuate;
 
 class Utils {
 	public static function floatToStr(n:Float, prec = 3) {
@@ -78,5 +79,15 @@ class Utils {
 		// We clamp t from [0,1] to handle points outside the segment vw.
 		final t = Math.max(0, Math.min(1, p.sub(l0).dot(l1.sub(l0)) / d2));
 		return l0.add(l1.sub(l0).multiply(t)); // Projection falls on the segment
+	}
+
+	public static function posUpdated(obj:h2d.Object) {
+		// Tween is not smart enough to call the setter.
+		obj.x = obj.x;
+	}
+
+	/** Tween for Heaps objects0**/
+	public static function tween(obj, time:Float, properties:Dynamic) {
+		return Actuate.tween(obj, time, properties).onUpdate(() -> posUpdated(obj)).onComplete(() -> posUpdated(obj));
 	}
 }

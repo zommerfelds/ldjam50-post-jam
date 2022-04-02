@@ -1,22 +1,7 @@
-import motion.Actuate;
 import h2d.col.Point;
 import RenderUtils.*;
-
-enum CardType {
-	Track;
-	Station;
-	Money;
-}
-
-class Card {
-	public function new(type, obj) {
-		this.type = type;
-		this.obj = obj;
-	}
-
-	public final type:CardType;
-	public final obj:h2d.Object;
-}
+import Card;
+import Utils.*;
 
 class PlayView extends GameState {
 	static final LAYER_MAP = 0;
@@ -41,14 +26,57 @@ class PlayView extends GameState {
 
 	final handCards:Array<Card> = [];
 
-	final tileCardTrack = hxd.Res.card_track.toTile();
-	final tileCardMoney = hxd.Res.card_money.toTile();
-	final tileCardStation = hxd.Res.card_station.toTile();
-
-	final CARD_WIDTH = 21;
-	final CARD_HEIGHT = 31;
-
 	override function init() {
+		Card.init();
+		setUpCamera();
+
+		addEventListener(onMapEvent);
+
+		setUpGameModel();
+
+		addChild(drawGr);
+
+		handCards.push(new Card(Track, this, LAYER_UI));
+		handCards.push(new Card(Money, this, LAYER_UI));
+		handCards.push(new Card(Track, this, LAYER_UI));
+		handCards.push(new Card(Station, this, LAYER_UI));
+		handCards.push(new Card(Station, this, LAYER_UI));
+		for (card in handCards) {
+			card.obj.x = width / 2;
+			card.obj.y = height / 2;
+			card.onRelease = onReleaseHandCard;
+		}
+		arrangeHand();
+
+		final deck = new Card(Backside, this, LAYER_UI);
+		deck.homePos.x = Gui.scale(76);
+		deck.homePos.y = height - Gui.scale(252);
+		deck.returnToHomePos();
+		deck.canMove = false;
+		final deck = new Card(Backside, this, LAYER_UI);
+		deck.homePos.x = Gui.scale(78);
+		deck.homePos.y = height - Gui.scale(251);
+		deck.returnToHomePos();
+		deck.canMove = false;
+		final deckNext = new Card(Backside, this, LAYER_UI);
+		deckNext.homePos.x = Gui.scale(80);
+		deckNext.homePos.y = height - Gui.scale(250);
+		deckNext.returnToHomePos();
+
+		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
+			addChildAt(fpsText, LAYER_UI);
+		}
+
+		for (i in 0...5) {
+			final placeholder = new h2d.Bitmap(Card.CARD_TILES[Track], this);
+			placeholder.scale(Gui.scale(2));
+			placeholder.alpha = 0.5;
+			placeholder.visible = false;
+			constructionCardPlaceholders.push(placeholder);
+		}
+	}
+
+	function setUpCamera() {
 		// Set up fixed camera for UI elements.
 		final uiCamera = new h2d.Camera(this);
 		uiCamera.layerVisible = (layer) -> layer == LAYER_UI;
@@ -59,35 +87,6 @@ class PlayView extends GameState {
 		camera.anchorY = 0.5;
 		camera.clipViewport = true;
 		camera.layerVisible = (layer) -> layer == LAYER_MAP;
-
-		addEventListener(onMapEvent);
-
-		setUpGameModel();
-
-		addChild(drawGr);
-
-		tileCardTrack.setCenterRatio();
-		tileCardMoney.setCenterRatio();
-		tileCardStation.setCenterRatio();
-
-		handCards.push(makeCard(Track));
-		handCards.push(makeCard(Money));
-		handCards.push(makeCard(Track));
-		handCards.push(makeCard(Station));
-		handCards.push(makeCard(Station));
-		arrangeHand();
-
-		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
-			addChildAt(fpsText, LAYER_UI);
-		}
-
-		for (i in 0...5) {
-			final placeholder = new h2d.Bitmap(tileCardTrack, this);
-			placeholder.scale(Gui.scale(2));
-			placeholder.alpha = 0.5;
-			placeholder.visible = false;
-			constructionCardPlaceholders.push(placeholder);
-		}
 	}
 
 	function setUpGameModel() {
@@ -107,104 +106,67 @@ class PlayView extends GameState {
 		// tracks.push({start: 1, end: 2});
 
 		stations.push(points[0].multiply(0.1).add(points[1].multiply(0.9)));
+		stations.push(points[1].multiply(0.1).add(points[0].multiply(0.9)));
 	}
 
-	function makeCard(type:CardType) {
-		final obj = new h2d.Bitmap(switch (type) {
-			case Track: tileCardTrack;
-			case Station: tileCardStation;
-			case Money: tileCardMoney;
-		});
-		obj.scale(Gui.scale(5));
-		obj.x = width / 2;
-		obj.y = height / 2;
+	function onReleaseHandCard(card:Card, pt:Point) {
+		var mapPt = pt.clone();
+		camera.screenToCamera(mapPt);
 
-		final card = new Card(type, obj);
+		switch (card.type) {
+			case Track:
+				if (trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
+					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
+					if (toPoint(placeholder).distance(mapPt) < 450) {
+						trace("Building track!");
+						handCards.remove(card);
 
-		final interactive = new h2d.Interactive(CARD_WIDTH, CARD_HEIGHT, obj);
-		interactive.x = -CARD_WIDTH / 2;
-		interactive.y = -CARD_HEIGHT / 2;
-		interactive.onPush = (e) -> {
-			startCapture((e) -> {
-				Actuate.tween(obj, 0, {
-					x: e.relX,
-					y: e.relY,
-					rotation: 0,
-				}).onComplete(() -> posUpdated(obj));
-			});
-		};
-		interactive.onRelease = (e) -> {
-			var pt = new Point(e.relX, e.relY);
-			pt = interactive.localToGlobal(pt);
-			camera.screenToCamera(pt);
+						trackUnderConstruction.cards.push(card);
 
-			switch (card.type) {
-				case Track:
-					if (trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
-						final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
-						if (Utils.toPoint(placeholder).distance(pt) < 450) {
-							trace("Building track!");
-							handCards.remove(card);
+						// Move to map layer.
+						card.obj.remove();
+						addChild(card.obj);
 
-							trackUnderConstruction.cards.push(card);
+						var cardPos = toPoint(card.obj);
+						camera.screenToCamera(cardPos);
+						card.obj.x = cardPos.x;
+						card.obj.y = cardPos.y;
 
-							// Move to map layer.
-							obj.remove();
-							addChild(obj);
+						trackUnderConstruction.paid++;
 
-							var cardPos = Utils.toPoint(card.obj);
-							camera.screenToCamera(cardPos);
-							card.obj.x = cardPos.x;
-							card.obj.y = cardPos.y;
-
-							trackUnderConstruction.paid++;
-
-							Actuate.tween(card.obj, 1.0, {
-								x: placeholder.x,
-								y: placeholder.y,
-								scaleX: placeholder.scaleX,
-								scaleY: placeholder.scaleY,
-							}).onUpdate(() -> posUpdated(card.obj)).onComplete(() -> {
-								if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
-									points.push(trackUnderConstruction.start);
-									points.push(trackUnderConstruction.end);
-									tracks.push({start: points.length - 2, end: points.length - 1});
-									for (card in trackUnderConstruction.cards) {
-										card.obj.remove();
-									}
-									trackUnderConstruction = null;
+						tween(card.obj, 1.0, {
+							x: placeholder.x,
+							y: placeholder.y,
+							scaleX: placeholder.scaleX,
+							scaleY: placeholder.scaleY,
+						}).onComplete(() -> {
+							if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
+								points.push(trackUnderConstruction.start);
+								points.push(trackUnderConstruction.end);
+								tracks.push({start: points.length - 2, end: points.length - 1});
+								for (card in trackUnderConstruction.cards) {
+									card.obj.remove();
 								}
-							});
-						}
+								trackUnderConstruction = null;
+							}
+						});
 					}
-				case Station:
-				default:
-			}
-			arrangeHand();
-
-			stopCapture();
-		};
-
-		addChildAt(obj, LAYER_UI);
-
-		return card;
+				}
+			case Station:
+			default:
+		}
+		arrangeHand();
 	}
 
 	function arrangeHand() {
 		var i = 0;
 		for (card in handCards) {
-			Actuate.tween(card.obj, 1.0, {
-				x: width * 0.5 + Math.min(width * 0.75, handCards.length * Gui.scale(60)) * (i / (handCards.length - 1) - 0.5),
-				y: height - Gui.scale(50),
-				rotation: (i / (handCards.length - 1) - 0.5) * Math.PI * 0.2,
-			}).onUpdate(() -> posUpdated(card.obj));
+			card.homePos.x = width * 0.5 + Math.min(width * 0.75, handCards.length * Gui.scale(60)) * (i / (handCards.length - 1) - 0.5);
+			card.homePos.y = height - Gui.scale(50);
+			card.homeRotation = (i / (handCards.length - 1) - 0.5) * Math.PI * 0.2;
+			card.returnToHomePos();
 			i++;
 		}
-	}
-
-	function posUpdated(obj:h2d.Object) {
-		// Tween is not smart enough to call the setter.
-		obj.x = obj.x;
 	}
 
 	function onMapEvent(event:hxd.Event) {
@@ -217,7 +179,7 @@ class PlayView extends GameState {
 
 			var closestPoint = null;
 			for (track in tracks) {
-				final closestPointTrack = Utils.projectToLineSegment(pt, points[track.start], points[track.end]);
+				final closestPointTrack = projectToLineSegment(pt, points[track.start], points[track.end]);
 				if (closestPoint == null || closestPointTrack.distance(pt) < closestPoint.distance(pt)) {
 					closestPoint = closestPointTrack;
 				}
