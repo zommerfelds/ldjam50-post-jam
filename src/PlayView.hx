@@ -90,7 +90,7 @@ class PlayView extends GameState {
 			case Station: tileCardStation;
 			case Money: tileCardMoney;
 		});
-		obj.scale(20);
+		obj.scale(Gui.scale(5));
 		obj.x = width / 2;
 		obj.y = height / 2;
 
@@ -112,8 +112,8 @@ class PlayView extends GameState {
 		var i = 0;
 		for (card in handCards) {
 			Actuate.tween(card.obj, 3, {
-				x: width * (0.2 + i / (handCards.length - 1) * 0.6),
-				y: height * 0.85,
+				x: width * 0.5 + Math.min(width * 0.75, handCards.length * Gui.scale(60)) * (i / (handCards.length - 1) - 0.5),
+				y: height - Gui.scale(50),
 				rotation: (i / (handCards.length - 1) - 0.5) * Math.PI * 0.2,
 			}).onUpdate(() -> posUpdated(card.obj));
 			i++;
@@ -127,9 +127,6 @@ class PlayView extends GameState {
 
 	function onMapEvent(event:hxd.Event) {
 		event.propagate = false;
-
-		if (event.touchId != 0)
-			return;
 
 		if (event.kind == EPush) {
 			final pt = new Point(event.relX, event.relY);
@@ -185,10 +182,6 @@ class PlayView extends GameState {
 		drawMap();
 
 		fpsText.text = "FPS: " + Math.round(hxd.Timer.fps());
-		// Actuate.isActive();
-		// Actuate.defaultActuator;
-		// trackCard.y = trackCard.y;
-		// trackCard.sync();
 	}
 
 	function drawMap() {
