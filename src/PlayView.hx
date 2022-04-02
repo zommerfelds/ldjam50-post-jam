@@ -28,7 +28,7 @@ class PlayView extends GameState {
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
 
-	final handCards = [];
+	final handCards:Array<Card> = [];
 
 	final tileCardTrack = hxd.Res.card_track.toTile();
 	final tileCardMoney = hxd.Res.card_money.toTile();
@@ -97,8 +97,18 @@ class PlayView extends GameState {
 		final interactive = new h2d.Interactive(CARD_WIDTH, CARD_HEIGHT, obj);
 		interactive.x = -CARD_WIDTH / 2;
 		interactive.y = -CARD_HEIGHT / 2;
-		interactive.onClick = (e) -> {
-			trace("Touched " + type);
+		interactive.onPush = (e) -> {
+			startCapture((e) -> {
+				Actuate.tween(obj, 0, {
+					x: e.relX,
+					y: e.relY,
+					rotation: 0,
+				}).onComplete(() -> posUpdated(obj));
+			});
+		};
+		interactive.onRelease = (e) -> {
+			stopCapture();
+			arrangeHand();
 		};
 
 		final card = new Card(type, obj);
@@ -111,7 +121,7 @@ class PlayView extends GameState {
 	function arrangeHand() {
 		var i = 0;
 		for (card in handCards) {
-			Actuate.tween(card.obj, 3, {
+			Actuate.tween(card.obj, 1.0, {
 				x: width * 0.5 + Math.min(width * 0.75, handCards.length * Gui.scale(60)) * (i / (handCards.length - 1) - 0.5),
 				y: height - Gui.scale(50),
 				rotation: (i / (handCards.length - 1) - 0.5) * Math.PI * 0.2,
