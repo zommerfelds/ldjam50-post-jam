@@ -19,13 +19,14 @@ class PlayView extends GameState {
 		connectedStation:Null<Int>,
 		bitmap:h2d.Bitmap
 	}> = [];
-	final stations = [];
+	final stations:Array<h2d.Bitmap> = [];
 	var trackUnderConstruction:{
 		start:Point,
 		end:Point,
 		cost:Int,
 		paid:Int,
 		cards:Array<Card>,
+		valid:Bool,
 	} = null;
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
@@ -125,7 +126,10 @@ class PlayView extends GameState {
 
 		switch (card.type) {
 			case Track:
-				if (payDebtCard == null && trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
+				if (payDebtCard == null
+					&& trackUnderConstruction != null
+					&& trackUnderConstruction.valid
+					&& trackUnderConstruction.paid < trackUnderConstruction.cost) {
 					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
 					if (toPoint(placeholder).distance(mapPt) < 450) {
 						addCardToConstruction(card);
@@ -402,6 +406,7 @@ class PlayView extends GameState {
 					cost: 1,
 					paid: 0,
 					cards: [],
+					valid: false,
 				};
 			}
 
@@ -424,6 +429,7 @@ class PlayView extends GameState {
 					if (newCost <= 5) {
 						trackUnderConstruction.end = pt.clone();
 						trackUnderConstruction.cost = newCost;
+						trackUnderConstruction.valid = canBuildTrack(trackUnderConstruction.start, trackUnderConstruction.end);
 					}
 
 					// points[points.length - 1] = pt.clone();
@@ -450,6 +456,32 @@ class PlayView extends GameState {
 				}
 			});
 		}
+	}
+
+	function canBuildTrack(start, end) {
+		final ray = new differ.shapes.Ray(new differ.math.Vector(start.x, start.y), new differ.math.Vector(end.x, end.y));
+		final padding = 70;
+		for (house in houses) {
+			final b = house.bitmap.getBounds();
+			final shape = differ.shapes.Polygon.rectangle(house.bitmap.x, house.bitmap.y, tileHouse.width * MAP_PIXEL_SCALE + padding,
+				tileHouse.height * MAP_PIXEL_SCALE + padding);
+			shape.rotation = hxd.Math.radToDeg(house.bitmap.rotation);
+			final collision = differ.Collision.rayWithShape(ray, shape);
+			if (collision != null) {
+				return false;
+			}
+		}
+		for (station in stations) {
+			final b = station.getBounds();
+			final shape = differ.shapes.Polygon.rectangle(station.x, station.y, tileStation.width * MAP_PIXEL_SCALE + padding,
+				tileStation.height * MAP_PIXEL_SCALE + padding);
+			shape.rotation = hxd.Math.radToDeg(station.rotation);
+			final collision = differ.Collision.rayWithShape(ray, shape);
+			if (collision != null) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	override function update(dt:Float) {
@@ -503,16 +535,21 @@ class PlayView extends GameState {
 		}
 
 		drawGr.endFill();
-		drawGr.lineStyle(15, 0x662d0e);
+		var railroadTiesColor = 0x662d0e;
+		drawGr.lineStyle(15, railroadTiesColor);
 		for (track in tracks) {
 			drawRailroadTies(drawGr, points[track.start], points[track.end]);
 		}
 		if (trackUnderConstruction != null) {
-			drawGr.lineStyle(15, 0x662d0e, 0.4);
+			if (!trackUnderConstruction.valid) {
+				railroadTiesColor = hxd.Math.colorLerp(railroadTiesColor, 0xff0000, 0.6);
+			}
+			drawGr.lineStyle(15, railroadTiesColor, 0.4);
 			drawRailroadTies(drawGr, trackUnderConstruction.start, trackUnderConstruction.end);
 		}
 
-		drawGr.lineStyle(10, 0x000000);
+		var railColor = 0x000000;
+		drawGr.lineStyle(10, railColor);
 		for (track in tracks) {
 			drawRails(drawGr, points[track.start], points[track.end]);
 		}
@@ -520,28 +557,33 @@ class PlayView extends GameState {
 			placeholder.visible = false;
 		}
 		if (trackUnderConstruction != null) {
-			drawGr.lineStyle(10, 0x000000, 0.4);
+			if (!trackUnderConstruction.valid) {
+				railColor = hxd.Math.colorLerp(railColor, 0xff0000, 0.6);
+			}
+			drawGr.lineStyle(10, railColor, 0.4);
 			drawRails(drawGr, trackUnderConstruction.start, trackUnderConstruction.end);
 
-			drawGr.beginFill(0x706362);
-			drawGr.lineStyle();
+			if (trackUnderConstruction.valid) {
+				drawGr.beginFill(0x706362);
+				drawGr.lineStyle();
 
-			final offsetY = 120;
-			final triangleSize = 30;
-			final placeholderWidth = constructionCardPlaceholders[0].getBounds().width;
-			final w = (placeholderWidth + Gui.scale(10) / camera.scaleX) * trackUnderConstruction.cost + Gui.scale(10) / camera.scaleX;
-			final h = constructionCardPlaceholders[0].getBounds().height + Gui.scale(20) / camera.scaleX;
-			final popup = trackUnderConstruction.start.add(trackUnderConstruction.end).multiply(0.5);
-			drawGr.drawRect(popup.x - w / 2, popup.y + offsetY + triangleSize, w, h);
-			drawGr.moveTo(popup.x, popup.y + offsetY);
-			drawGr.lineTo(popup.x - triangleSize, popup.y + offsetY + triangleSize);
-			drawGr.lineTo(popup.x + triangleSize, popup.y + offsetY + triangleSize);
+				final offsetY = 120;
+				final triangleSize = 30;
+				final placeholderWidth = constructionCardPlaceholders[0].getBounds().width;
+				final w = (placeholderWidth + Gui.scale(10) / camera.scaleX) * trackUnderConstruction.cost + Gui.scale(10) / camera.scaleX;
+				final h = constructionCardPlaceholders[0].getBounds().height + Gui.scale(20) / camera.scaleX;
+				final popup = trackUnderConstruction.start.add(trackUnderConstruction.end).multiply(0.5);
+				drawGr.drawRect(popup.x - w / 2, popup.y + offsetY + triangleSize, w, h);
+				drawGr.moveTo(popup.x, popup.y + offsetY);
+				drawGr.lineTo(popup.x - triangleSize, popup.y + offsetY + triangleSize);
+				drawGr.lineTo(popup.x + triangleSize, popup.y + offsetY + triangleSize);
 
-			for (i in 0...trackUnderConstruction.cost) {
-				constructionCardPlaceholders[i].visible = true;
-				constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) / camera.scaleX
-					+ i * (placeholderWidth + Gui.scale(10) / camera.scaleX);
-				constructionCardPlaceholders[i].y = popup.y + offsetY + triangleSize + h / 2;
+				for (i in 0...trackUnderConstruction.cost) {
+					constructionCardPlaceholders[i].visible = true;
+					constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) / camera.scaleX
+						+ i * (placeholderWidth + Gui.scale(10) / camera.scaleX);
+					constructionCardPlaceholders[i].y = popup.y + offsetY + triangleSize + h / 2;
+				}
 			}
 		}
 
