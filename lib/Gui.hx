@@ -30,7 +30,7 @@ class Text extends h2d.HtmlText {
 		textColor = 0xffffffff;
 
 		// Reduce space between lines. This may need to change depending on the font.
-		lineSpacing = Std.int(-font.lineHeight * Gui.scale(1.2) * size);
+		// lineSpacing = Std.int(-font.lineHeight * Gui.scale(0.1) * size);
 
 		if (addDefaultShadow) {
 			dropShadow = {
@@ -191,7 +191,8 @@ class TextButton extends Button {
 		}
 
 		// Remove some space from top (lineSpacing is usually negative).
-		content.paddingTop += Std.int(text.lineSpacing);
+		// content.paddingTop += Std.int(text.lineSpacing);
+		content.paddingTop -= Std.int(Gui.scale(15 * textSize));
 
 		redrawButton();
 	}

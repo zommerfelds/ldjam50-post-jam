@@ -226,6 +226,7 @@ class HerbalTeaApp extends hxd.App {
 	public function switchState(state:GameState) {
 		if (currentState != null) {
 			currentState.cleanup();
+			currentState.removeChildren(); // TODO: why cleanup?
 
 			renderedCurrentState = false;
 			currentState = null;

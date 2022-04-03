@@ -10,7 +10,7 @@ class MenuView extends GameState {
 		centeringFlow.layout = Vertical;
 		centeringFlow.verticalSpacing = Gui.scaleAsInt(50);
 
-		new Gui.Text("Trains & Cards", centeringFlow);
+		new Gui.Text("Debt Train", centeringFlow);
 
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 
@@ -18,12 +18,14 @@ class MenuView extends GameState {
 			HerbalTeaApp.toggleFullScreen();
 			centeringFlow.reflow();
 		}, Gui.Colors.BLUE, 0.8);
-		new Gui.TextButton(centeringFlow, "Start game", () -> {
-			App.instance.switchState(new PlayView());
+		new Gui.TextButton(centeringFlow, "Start game!", () -> {
+			App.instance.switchState(new IntroView());
 		}, Gui.Colors.BLUE, 0.8);
 
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 
-		new Gui.Text("version: " + hxd.Res.version.entry.getText(), centeringFlow, 0.5);
+		new Gui.Text("Game by Christian Zommerfelds", centeringFlow, 0.5);
+		new Gui.Text("Made in 48h for Ludum Dare 50", centeringFlow, 0.5);
+		new Gui.Text("Version: " + hxd.Res.version.entry.getText(), centeringFlow, 0.5);
 	}
 }

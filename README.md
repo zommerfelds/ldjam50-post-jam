@@ -1,4 +1,4 @@
-# My game entry for Ludum Dare 50: Cards & Trains
+# My game entry for Ludum Dare 50: Debt Train
 
 [Live demo](https://zommerfelds.github.io/ldjam50/)
 

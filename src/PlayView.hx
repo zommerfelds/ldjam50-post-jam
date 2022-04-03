@@ -58,8 +58,6 @@ class PlayView extends GameState {
 	var cardsDrawn = 0;
 	var zooming = 0;
 
-	var musicChanel:hxd.snd.Channel;
-
 	public function new() {
 		super();
 		rand = new hxd.Rand(seed);
@@ -67,7 +65,8 @@ class PlayView extends GameState {
 	}
 
 	override function init() {
-		musicChanel = hxd.Res.song.play(/* loop= */ true, /* volume= */ 0.5);
+		App.instance.musicChannel.pause = false;
+		App.instance.musicChannel.fadeTo(/* volume= */ 0.5, /* time=*/ 3.0);
 		setUpTiles();
 
 		setUpCamera();
@@ -312,7 +311,10 @@ class PlayView extends GameState {
 				});
 			}
 		}
-		Timer.delay(arrangeHand, Std.int(tweenTime * 0.8 * 1000));
+		Timer.delay(() -> {
+			hxd.Res.good.play();
+			arrangeHand();
+		}, Std.int(tweenTime * 0.8 * 1000));
 	}
 
 	function flipDeckCard(card:Card, pt:Point) {
@@ -352,7 +354,7 @@ class PlayView extends GameState {
 						scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
 					});
 				} else {
-					musicChanel.fadeTo(/* volume= */ 0, /* time=*/ 3.0);
+					App.instance.musicChannel.fadeTo(/* volume= */ 0, /* time=*/ 3.0);
 					tween(card.obj, 3.0,
 						{
 							scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE * 4),
@@ -377,7 +379,7 @@ class PlayView extends GameState {
 			{card: Track, units: 2.0},
 			{card: Station, units: 1.0},
 			{card: Money, units: 0.5},
-			{card: Debt, units: 1.0 + cardsDrawn * 0.05}, // Game gets harder and harder.
+			{card: Debt, units: 1.0 + cardsDrawn * 0.02}, // Game gets harder and harder.
 		];
 		cardsDrawn++;
 		final total = shares.fold((share, acc) -> share.units + acc, 0);
