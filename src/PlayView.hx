@@ -53,7 +53,7 @@ class PlayView extends GameState {
 
 		for (i in 0...5) {
 			final placeholder = new h2d.Bitmap(Card.CARD_TILES[Track], this);
-			placeholder.scale(Gui.scale(2));
+			placeholder.scale(Gui.scale(3) / camera.scaleX);
 			placeholder.alpha = 0.5;
 			placeholder.visible = false;
 			constructionCardPlaceholders.push(placeholder);
@@ -71,6 +71,8 @@ class PlayView extends GameState {
 		camera.anchorY = 0.5;
 		camera.clipViewport = true;
 		camera.layerVisible = (layer) -> layer == LAYER_MAP;
+		final s = Gui.scale() * 0.4;
+		camera.scale(s, s);
 	}
 
 	function setUpGameModel() {
@@ -271,7 +273,7 @@ class PlayView extends GameState {
 		event.propagate = false;
 
 		// Ignore multiple fingers
-		if (event.touchId != 0)
+		if (event.touchId != null && event.touchId != 0)
 			return;
 
 		if (event.kind == EPush) {
@@ -300,12 +302,18 @@ class PlayView extends GameState {
 
 			final startDragPos = new Point(event.relX, event.relY);
 			var lastDragPos = startDragPos.clone();
+			var firstEvent = true;
 
 			// Using startCapture ensures we still get events when going over other interactives.
 			startCapture(event -> {
 				// Ignore multiple fingers
-				if (event.touchId != 0)
+				if (event.touchId != null && event.touchId != 0)
 					return;
+				if (firstEvent) {
+					// Some how the first event is messed up on desktop
+					firstEvent = false;
+					return;
+				}
 				final pt = new Point(event.relX, event.relY);
 				camera.screenToCamera(pt);
 
@@ -319,8 +327,8 @@ class PlayView extends GameState {
 					// points[points.length - 1] = pt.clone();
 				} else {
 					// Moving camera
-					camera.x += lastDragPos.x - event.relX;
-					camera.y += lastDragPos.y - event.relY;
+					camera.x += (lastDragPos.x - event.relX) / camera.scaleX;
+					camera.y += (lastDragPos.y - event.relY) / camera.scaleY;
 				}
 
 				if (clickedPt != null && startDragPos.distance(new Point(event.relX, event.relY)) > Gui.scale() * 30) {
@@ -390,11 +398,11 @@ class PlayView extends GameState {
 			drawGr.beginFill(0x706362);
 			drawGr.lineStyle();
 
-			final offsetY = 80;
+			final offsetY = 120;
 			final triangleSize = 30;
 			final placeholderWidth = constructionCardPlaceholders[0].getBounds().width;
-			final w = (placeholderWidth + Gui.scale(10)) * trackUnderConstruction.cost + Gui.scale(10);
-			final h = constructionCardPlaceholders[0].getBounds().height + Gui.scale(20);
+			final w = (placeholderWidth + Gui.scale(10) / camera.scaleX) * trackUnderConstruction.cost + Gui.scale(10) / camera.scaleX;
+			final h = constructionCardPlaceholders[0].getBounds().height + Gui.scale(20) / camera.scaleX;
 			final popup = trackUnderConstruction.start.add(trackUnderConstruction.end).multiply(0.5);
 			drawGr.drawRect(popup.x - w / 2, popup.y + offsetY + triangleSize, w, h);
 			drawGr.moveTo(popup.x, popup.y + offsetY);
@@ -403,7 +411,8 @@ class PlayView extends GameState {
 
 			for (i in 0...trackUnderConstruction.cost) {
 				constructionCardPlaceholders[i].visible = true;
-				constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) + i * (placeholderWidth + Gui.scale(10));
+				constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) / camera.scaleX
+					+ i * (placeholderWidth + Gui.scale(10) / camera.scaleX);
 				constructionCardPlaceholders[i].y = popup.y + offsetY + triangleSize + h / 2;
 			}
 		}
