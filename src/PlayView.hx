@@ -41,17 +41,7 @@ class PlayView extends GameState {
 		addChild(drawGr);
 
 		setUpDeck();
-
-		addChildAt(handCardsContainer, LAYER_UI);
-		newHandCard(Money);
-		newHandCard(Track);
-		newHandCard(Track);
-		newHandCard(Station);
-		newHandCard(Station);
-		for (card in handCards) {
-			card.onRelease = onReleaseHandCard;
-		}
-		arrangeHand();
+		setUpHand();
 
 		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
 			addChildAt(fpsText, LAYER_UI);
@@ -186,6 +176,7 @@ class PlayView extends GameState {
 		final pos = getPositionForNewHandCard(type);
 		final card = new Card(type, handCardsContainer, this, pos);
 		handCards.set(card.obj, card);
+		card.onRelease = onReleaseHandCard;
 		return card;
 	}
 
@@ -391,5 +382,15 @@ class PlayView extends GameState {
 		deckNext.homePos.y = height - Gui.scale(250);
 		deckNext.returnToHomePos(0.0);
 		deckNext.onRelease = onPlayDeckCard;
+	}
+
+	function setUpHand() {
+		addChildAt(handCardsContainer, LAYER_UI);
+		newHandCard(Money);
+		newHandCard(Track);
+		newHandCard(Track);
+		newHandCard(Station);
+		newHandCard(Station);
+		arrangeHand();
 	}
 }
