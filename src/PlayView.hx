@@ -149,7 +149,7 @@ class PlayView extends GameState {
 			tween(card.obj, 0.4, {
 				scaleX: 0,
 			}, /* overwrite= */ false).ease(motion.easing.Sine.easeIn).onComplete(() -> {
-				final newCard = drawNewCard();
+				final newCard = newRandomHandCard();
 				copyTransform(card.obj, newCard.obj);
 				card.obj.remove();
 				tween(newCard.obj, 0.3, {
@@ -162,7 +162,7 @@ class PlayView extends GameState {
 		});
 	}
 
-	function drawNewCard() {
+	function newRandomHandCard() {
 		final type = switch (rand.rand()) {
 			case r if (r < 0.5): Track;
 			case r if (r < 0.8): Station;
