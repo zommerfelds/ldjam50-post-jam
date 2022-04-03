@@ -14,7 +14,11 @@ class PlayView extends GameState {
 
 	final points = [];
 	final tracks = [];
-	final houses = [];
+	final houses:Array<{
+		center:Point,
+		connectedStation:Null<Int>,
+		bitmap:h2d.Bitmap
+	}> = [];
 	final stations = [];
 	var trackUnderConstruction:{
 		start:Point,
@@ -23,21 +27,17 @@ class PlayView extends GameState {
 		paid:Int,
 		cards:Array<Card>,
 	} = null;
-
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
 	final constructionCardPlaceholders:Array<h2d.Bitmap> = [];
 	var clickedPt = null;
 	var payDebtCard:Null<Card> = null;
-
 	final handCards:Map<h2d.Object, Card> = [];
 	final handCardsContainer = new h2d.Object();
-
 	final rand = new hxd.Rand(/* seed= */ 10);
-
 	var movingHandCard:Null<Card> = null;
 
-	static final STATION_RADIUS = 500.0;
+	static final STATION_RADIUS = 700.0;
 	static final MAP_PIXEL_SCALE = 9;
 
 	final houseTile = hxd.Res.house.toTile();
@@ -202,8 +202,8 @@ class PlayView extends GameState {
 
 		final tweenTime = 1.0;
 		for (house in houses) {
-			if (pointOnTrack.distance(house.center) <= STATION_RADIUS && !house.connected) {
-				house.connected = true;
+			if (pointOnTrack.distance(house.center) <= STATION_RADIUS && house.connectedStation == null) {
+				house.connectedStation = stations.length - 1;
 				final card = newHandCard(Money);
 				final screenPt = house.center.clone();
 				camera.cameraToScreen(screenPt);
@@ -449,31 +449,24 @@ class PlayView extends GameState {
 		drawGr.beginFill(0x509450);
 		drawGr.drawRect(-10000, -10000, 20000, 20000);
 
+		for (house in houses) {
+			if (stationPreview != null && stationPreview.distance(house.center) <= STATION_RADIUS && house.connectedStation == null) {
+				house.bitmap.blendMode = Add;
+			} else {
+				house.bitmap.blendMode = Alpha;
+			}
+		}
+
+		drawGr.endFill();
+		drawGr.lineStyle(20, 0xa88a63);
+		for (house in houses) {
+			if (house.connectedStation == null)
+				continue;
+			drawGr.moveTo(house.center.x, house.center.y);
+			drawGr.lineTo(stations[house.connectedStation].x, stations[house.connectedStation].y);
+		}
+
 		drawGr.lineStyle();
-		final w = 140;
-		final h = 200;
-
-		drawGr.beginFill(0xadcc47);
-		for (house in houses) {
-			if (house.connected) {
-				drawGr.drawRect(house.center.x - w / 2, house.center.y - h / 2, w, h);
-			}
-		}
-		drawGr.beginFill(0xc79f1a);
-		for (house in houses) {
-			if ((stationPreview == null || stationPreview.distance(house.center) > STATION_RADIUS) && !house.connected) {
-				drawGr.drawRect(house.center.x - w / 2, house.center.y - h / 2, w, h);
-			}
-		}
-		if (stationPreview != null) {
-			drawGr.beginFill(0xe0c775);
-			for (house in houses) {
-				if (stationPreview.distance(house.center) <= STATION_RADIUS && !house.connected) {
-					drawGr.drawRect(house.center.x - w / 2, house.center.y - h / 2, w, h);
-				}
-			}
-		}
-
 		drawGr.beginFill(0x382c26);
 		for (point in points) {
 			drawGr.drawCircle(point.x, point.y, 35);
@@ -535,7 +528,7 @@ class PlayView extends GameState {
 		if (stationPreview != null) {
 			drawGr.endFill();
 			drawGr.lineStyle(10, 0xffffff, 0.8);
-			drawGr.drawCircle(stationPreview.x, stationPreview.y, STATION_RADIUS);
+			drawGr.drawCircle(stationPreview.x, stationPreview.y, STATION_RADIUS * 0.9);
 		}
 	}
 
@@ -577,15 +570,18 @@ class PlayView extends GameState {
 	}
 
 	function addHouse(center:Point, rotation:Float) {
+		// Could use normal map to make sun look better
+		// https://community.heaps.io/t/solved-trying-making-2d-lighting-shaders-with-normal-maps/255
 		final bitmap = new h2d.Bitmap(houseTile, this);
 		bitmap.scale(MAP_PIXEL_SCALE);
 		bitmap.x = center.x;
 		bitmap.y = center.y;
 		bitmap.rotation = rotation;
+		bitmap.filter = new h2d.filter.DropShadow(4.0, -rotation + Math.PI, 0, 0.6);
 
 		houses.push({
 			center: center,
-			connected: false,
+			connectedStation: null,
 			bitmap: bitmap,
 		});
 	}
