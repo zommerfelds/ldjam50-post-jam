@@ -195,6 +195,11 @@ class PlayView extends GameState {
 			scaleX: placeholder.scaleX,
 			scaleY: placeholder.scaleY,
 		}).ease(motion.easing.Cubic.easeOut).onComplete(() -> {
+			if (trackUnderConstruction == null) {
+				// TODO: this happens sometimes, but I don't know how to repro yet.
+				trace("ERROR: trackUnderConstruction shouldn't be null!");
+				return;
+			}
 			if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
 				points.push(trackUnderConstruction.start);
 				points.push(trackUnderConstruction.end);
@@ -460,24 +465,23 @@ class PlayView extends GameState {
 
 	function canBuildTrack(start, end) {
 		final ray = new differ.shapes.Ray(new differ.math.Vector(start.x, start.y), new differ.math.Vector(end.x, end.y));
+		// For some reason the first ray doesn't collide if it originates in the shape (bug in the library?)
+		final rayReversed = new differ.shapes.Ray(ray.end, ray.start);
 		final padding = 70;
 		for (house in houses) {
 			final shape = differ.shapes.Polygon.rectangle(house.bitmap.x, house.bitmap.y, tileHouse.width * MAP_PIXEL_SCALE + padding,
 				tileHouse.height * MAP_PIXEL_SCALE + padding);
 			shape.rotation = hxd.Math.radToDeg(house.bitmap.rotation);
-			final collision = differ.Collision.rayWithShape(ray, shape);
-			if (collision != null) {
+			if (differ.Collision.rayWithShape(ray, shape) != null || differ.Collision.rayWithShape(rayReversed, shape) != null)
 				return false;
-			}
 		}
+
 		for (station in stations) {
 			final shape = differ.shapes.Polygon.rectangle(station.x, station.y, tileStation.width * MAP_PIXEL_SCALE + padding,
 				tileStation.height * MAP_PIXEL_SCALE + padding);
 			shape.rotation = hxd.Math.radToDeg(station.rotation);
-			final collision = differ.Collision.rayWithShape(ray, shape);
-			if (collision != null) {
+			if (differ.Collision.rayWithShape(ray, shape) != null || differ.Collision.rayWithShape(rayReversed, shape) != null)
 				return false;
-			}
 		}
 		return true;
 	}
