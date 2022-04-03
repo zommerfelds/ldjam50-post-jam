@@ -256,7 +256,6 @@ class PlayView extends GameState {
 	function arrangeHand() {
 		var i = 0;
 		final numCards = handCardsContainer.children.length;
-		trace("numCards: " + numCards);
 		for (cardObj in handCardsContainer.children) {
 			final card = handCards[cardObj];
 			card.homePos.x = width * 0.5 + Math.min(width * 0.75, numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
@@ -270,6 +269,10 @@ class PlayView extends GameState {
 
 	function onMapEvent(event:hxd.Event) {
 		event.propagate = false;
+
+		// Ignore multiple fingers
+		if (event.touchId != 0)
+			return;
 
 		if (event.kind == EPush) {
 			clickedPt = new Point(event.relX, event.relY);
@@ -300,6 +303,9 @@ class PlayView extends GameState {
 
 			// Using startCapture ensures we still get events when going over other interactives.
 			startCapture(event -> {
+				// Ignore multiple fingers
+				if (event.touchId != 0)
+					return;
 				final pt = new Point(event.relX, event.relY);
 				camera.screenToCamera(pt);
 
