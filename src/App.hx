@@ -13,7 +13,7 @@ class App extends HerbalTeaApp {
 			case "game":
 				switchState(new PlayView());
 			case "gameover":
-				switchState(new GameOverView());
+				switchState(new GameOverView(/* cardsDrawn= */ 0));
 			default:
 				switchState(new MenuView());
 		}

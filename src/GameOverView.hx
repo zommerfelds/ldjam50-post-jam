@@ -1,6 +1,13 @@
 import haxe.Timer;
 
 class GameOverView extends GameState {
+	final cardsDrawn:Int;
+
+	public function new(cardsDrawn) {
+		super();
+		this.cardsDrawn = cardsDrawn;
+	}
+
 	override function init() {
 		final centeringFlow = new h2d.Flow(this);
 		centeringFlow.backgroundTile = h2d.Tile.fromColor(0x333333);
@@ -15,12 +22,15 @@ class GameOverView extends GameState {
 		new Gui.Text("Game Over", centeringFlow);
 		centeringFlow.addSpacing(Gui.scaleAsInt(50));
 
-		new Gui.Text("Bankruptcy was inevitable!", centeringFlow, 0.7);
-		centeringFlow.addSpacing(Gui.scaleAsInt(500));
+		new Gui.Text("Bankruptcy was inevitable!", centeringFlow, 0.6);
+		centeringFlow.addSpacing(Gui.scaleAsInt(450));
 
 		// TODO: add some stats
 
 		makeCard();
+
+		new Gui.Text('You drew a total of ${cardsDrawn} cards.', centeringFlow, 0.6);
+		centeringFlow.addSpacing(Gui.scaleAsInt(50));
 
 		new Gui.TextButton(centeringFlow, "Try again", () -> {
 			App.instance.switchState(new PlayView());
@@ -32,7 +42,7 @@ class GameOverView extends GameState {
 	function makeCard() {
 		if (this.getObjectsCount() > 1000)
 			return;
-		
+
 		final card = new Card(Debt, this, this);
 		card.obj.x = -Gui.scale(200);
 		card.obj.y = Gui.scale(300);

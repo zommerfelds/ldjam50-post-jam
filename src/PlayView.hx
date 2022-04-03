@@ -46,6 +46,8 @@ class PlayView extends GameState {
 
 	final mapObjects = new h2d.Object();
 
+	var cardsDrawn = 0;
+
 	override function init() {
 		setUpTiles();
 
@@ -290,7 +292,7 @@ class PlayView extends GameState {
 							scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE * 4),
 							scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE * 4),
 							rotation: Math.PI * 2,
-						}).ease(motion.easing.Cubic.easeIn).delay(0.2).onComplete(() -> App.instance.switchState(new GameOverView()));
+						}).ease(motion.easing.Cubic.easeIn).delay(0.2).onComplete(() -> App.instance.switchState(new GameOverView(cardsDrawn)));
 				}
 			case Money | Track | Station:
 				// Let card go to hand (it's already assigned to the hand).
@@ -303,12 +305,25 @@ class PlayView extends GameState {
 	}
 
 	function newCardFromDeck():Card {
-		final type = switch (rand.rand()) {
-			case r if (r < 0.3): Track;
-			case r if (r < 0.6): Station;
-			case r if (r < 0.7): Money;
-			default: Debt;
+		// Probabilities in "shares" out of sum.
+		final shares = [
+			{card: Track, units: 2.0},
+			{card: Station, units: 1.0},
+			{card: Money, units: 0.5},
+			{card: Debt, units: 1.0 + cardsDrawn * 0.05}, // Game gets harder and harder.
+		];
+		cardsDrawn++;
+		final total = shares.fold((share, acc) -> share.units + acc, 0);
+		var x = rand.rand() * total;
+		var type = null;
+		for (share in shares) {
+			if (x < share.units) {
+				type = share.card;
+				break;
+			}
+			x -= share.units;
 		}
+
 		var card;
 		if (type == Debt) {
 			card = newNonHandCard(Debt);
