@@ -20,15 +20,17 @@ class Text extends h2d.HtmlText {
 	public static final SPACE = "<b> </b>";
 
 	public function new(text, ?parent, size = 1.0, addDefaultShadow = false) {
-		final fontRes = hxd.Res.Catamaran_Light_sdf;
-		final font = fontRes.toSdfFont(Std.int(size * Gui.scale(60)), Alpha);
+		// final fontRes = hxd.Res.Catamaran_Light_sdf;
+		// final font = fontRes.toSdfFont(Std.int(size * Gui.scale(60)), Alpha);
+		final font = hxd.res.DefaultFont.get();
 		super(font, parent);
 		this.text = text;
-		smooth = true;
+		scale(Std.int(size * Gui.scale(5)));
+		// smooth = true;
 		textColor = 0xffffffff;
 
 		// Reduce space between lines. This may need to change depending on the font.
-		lineSpacing = -font.lineHeight * 0.2;
+		lineSpacing = Std.int(-font.lineHeight * Gui.scale(1.2) * size);
 
 		if (addDefaultShadow) {
 			dropShadow = {
@@ -53,7 +55,7 @@ class Text extends h2d.HtmlText {
 }
 
 class Colors {
-	public static final BLUE = 0xff352fad;
+	public static final BLUE = 0x547fc4;
 	public static final GREEN = 0xff469129;
 	public static final RED = 0xffb55f19;
 	public static final GREY = 0xff444444;

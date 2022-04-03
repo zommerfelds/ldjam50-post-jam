@@ -30,6 +30,9 @@ class GameOverView extends GameState {
 	}
 
 	function makeCard() {
+		if (this.getObjectsCount() > 1000)
+			return;
+		
 		final card = new Card(Debt, this, this);
 		card.obj.x = -Gui.scale(200);
 		card.obj.y = Gui.scale(300);
