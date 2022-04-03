@@ -37,6 +37,7 @@ class PlayView extends GameState {
 	} = null;
 	final drawGr = new h2d.Graphics();
 	final fpsText = new Gui.Text("", null, 0.5);
+	final tutorialText = new Gui.Text("", null, 0.7);
 	final constructionCardPlaceholders:Array<h2d.Bitmap> = [];
 	var clickedPt = null;
 	var payDebtCard:Null<Card> = null;
@@ -82,6 +83,11 @@ class PlayView extends GameState {
 
 		setUpZoomButtons();
 
+		addChildAt(tutorialText, LAYER_UI);
+		tutorialText.y = height - Gui.scale(300);
+		tutorialText.x = width * 0.1;
+		tutorialText.maxWidth = width * 0.9 / tutorialText.scaleX;
+
 		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
 			addChildAt(fpsText, LAYER_UI);
 		}
@@ -93,6 +99,12 @@ class PlayView extends GameState {
 			placeholder.visible = false;
 			constructionCardPlaceholders.push(placeholder);
 		}
+	}
+
+	function showMessage(text) {
+		tutorialText.alpha = 1;
+		tutorialText.text = text;
+		Actuate.tween(tutorialText, 1.0, {alpha: 0.0}).delay(5.0);
 	}
 
 	function setUpTiles() {
@@ -177,16 +189,23 @@ class PlayView extends GameState {
 
 		switch (card.type) {
 			case Track:
-				if (payDebtCard == null
-					&& trackUnderConstruction != null
-					&& trackUnderConstruction.valid
-					&& trackUnderConstruction.paid < trackUnderConstruction.cost) {
-					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
-					if (toPoint(placeholder).distance(mapPt) < 450) {
-						addCardToConstruction(card);
+				if (payDebtCard == null) {
+					if (trackUnderConstruction != null
+						&& trackUnderConstruction.valid
+						&& trackUnderConstruction.paid < trackUnderConstruction.cost) {
+						final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
+						if (toPoint(placeholder).distance(mapPt) < 450) {
+							addCardToConstruction(card);
+						} else {
+							showMessage("Drag this card on the construction to pay a track.");
+							hxd.Res.invalid.play();
+						}
+					} else {
+						showMessage("First, start a construction by touching and dragging from a track.");
+						hxd.Res.invalid.play();
 					}
 				} else {
-					// Print message about how this works.
+					showMessage("You need to pay the debt first.");
 					hxd.Res.invalid.play();
 				}
 				arrangeHand();
@@ -194,15 +213,22 @@ class PlayView extends GameState {
 				if (payDebtCard != null) {
 					payMoneyForDebt(card);
 				} else {
-					// Print message about how this works.
+					showMessage("You don't need to pay anything right now.");
 					hxd.Res.invalid.play();
 				}
 				arrangeHand();
 			case Station:
 				final pointOnTrack = getClosestPointOnTrack(mapPt);
-				if (payDebtCard == null && placingStationValid(pt, mapPt, pointOnTrack.closestPoint)) {
-					placeStation(card, pointOnTrack.closestPoint, pointOnTrack.rotation);
+				if (payDebtCard == null) {
+					if (placingStationValid(pt, mapPt, pointOnTrack.closestPoint)) {
+						placeStation(card, pointOnTrack.closestPoint, pointOnTrack.rotation);
+					} else {
+						showMessage("Place this card on a track to build a station.");
+						hxd.Res.invalid.play();
+						arrangeHand();
+					}
 				} else {
+					showMessage("You need to pay the debt first.");
 					hxd.Res.invalid.play();
 					arrangeHand();
 				}
@@ -353,6 +379,9 @@ class PlayView extends GameState {
 						scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
 						scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
 					});
+					card.onClickLocked = (card) -> {
+						showMessage("Drag money to pay debt.");
+					};
 				} else {
 					App.instance.musicChannel.fadeTo(/* volume= */ 0, /* time=*/ 3.0);
 					tween(card.obj, 3.0,

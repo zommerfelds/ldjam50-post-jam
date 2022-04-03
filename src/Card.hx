@@ -40,6 +40,7 @@ class Card {
 		card.returnToHomePos();
 	};
 	public var onMove:(Card, Point) -> Void = (card, pt) -> {};
+	public var onClickLocked:(Card) -> Void = (card) -> {};
 
 	public function new(type:CardType, parent:h2d.Object, scene:h2d.Scene, pos = null) {
 		this.type = type;
@@ -75,6 +76,12 @@ class Card {
 					onRelease(this, pt);
 				}
 			});
+		};
+		// TODO: hack
+		interactive.onClick = e -> {
+			if (canMove)
+				return;
+			onClickLocked(this);
 		};
 
 		homePos = toPoint(obj);
