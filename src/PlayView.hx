@@ -40,6 +40,8 @@ class PlayView extends GameState {
 
 		addChild(drawGr);
 
+		setUpDeck();
+
 		addChildAt(handCardsContainer, LAYER_UI);
 		newHandCard(Money);
 		newHandCard(Track);
@@ -50,8 +52,6 @@ class PlayView extends GameState {
 			card.onRelease = onReleaseHandCard;
 		}
 		arrangeHand();
-
-		setUpDeck();
 
 		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
 			addChildAt(fpsText, LAYER_UI);
