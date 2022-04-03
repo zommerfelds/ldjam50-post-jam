@@ -43,6 +43,8 @@ class PlayView extends GameState {
 	final tileHouse = hxd.Res.house.toTile();
 	final tileStation = hxd.Res.station.toTile();
 
+	final mapObjects = new h2d.Object();
+
 	override function init() {
 		setUpTiles();
 
@@ -91,6 +93,10 @@ class PlayView extends GameState {
 	}
 
 	function setUpEntities() {
+		addChild(mapObjects);
+		// It's very slow to compute shadow for all objects together.
+		// mapObjects.filter = new h2d.filter.DropShadow(40.0, Math.PI * 0.7, 0, 0.6);
+
 		points.push(new Point(-400, -700));
 		points.push(new Point(400, 700));
 		// points.push(new Point(800, 2000));
@@ -583,18 +589,18 @@ class PlayView extends GameState {
 		houses.push({
 			center: center,
 			connectedStation: null,
-			bitmap: makeBitmap(tileHouse, center, rotation),
+			bitmap: makeMapEntityBitmap(tileHouse, center, rotation),
 		});
 	}
 
 	function addStation(center:Point, rotation:Float) {
-		stations.push(makeBitmap(tileStation, center, rotation));
+		stations.push(makeMapEntityBitmap(tileStation, center, rotation));
 	}
 
-	function makeBitmap(tile, pos, rotation) {
+	function makeMapEntityBitmap(tile, pos, rotation) {
 		// Could use normal map to make sun look better
 		// https://community.heaps.io/t/solved-trying-making-2d-lighting-shaders-with-normal-maps/255
-		final bitmap = new h2d.Bitmap(tile, this);
+		final bitmap = new h2d.Bitmap(tile, mapObjects);
 		bitmap.x = pos.x;
 		bitmap.y = pos.y;
 		bitmap.rotation = rotation;
