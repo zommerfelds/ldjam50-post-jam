@@ -462,7 +462,6 @@ class PlayView extends GameState {
 		final ray = new differ.shapes.Ray(new differ.math.Vector(start.x, start.y), new differ.math.Vector(end.x, end.y));
 		final padding = 70;
 		for (house in houses) {
-			final b = house.bitmap.getBounds();
 			final shape = differ.shapes.Polygon.rectangle(house.bitmap.x, house.bitmap.y, tileHouse.width * MAP_PIXEL_SCALE + padding,
 				tileHouse.height * MAP_PIXEL_SCALE + padding);
 			shape.rotation = hxd.Math.radToDeg(house.bitmap.rotation);
@@ -472,7 +471,6 @@ class PlayView extends GameState {
 			}
 		}
 		for (station in stations) {
-			final b = station.getBounds();
 			final shape = differ.shapes.Polygon.rectangle(station.x, station.y, tileStation.width * MAP_PIXEL_SCALE + padding,
 				tileStation.height * MAP_PIXEL_SCALE + padding);
 			shape.rotation = hxd.Math.radToDeg(station.rotation);
