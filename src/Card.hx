@@ -39,6 +39,7 @@ class Card {
 	public var onRelease:(Card, Point) -> Void = (card, pt) -> {
 		card.returnToHomePos();
 	};
+	public var onMove:(Card, Point) -> Void = (card, pt) -> {};
 
 	public function new(type:CardType, parent:h2d.Object, scene:h2d.Scene, pos = null) {
 		this.type = type;
@@ -68,6 +69,7 @@ class Card {
 					y: pt.y,
 					rotation: 0,
 				});
+				onMove(this, pt);
 			});
 		};
 		interactive.onRelease = (e) -> {

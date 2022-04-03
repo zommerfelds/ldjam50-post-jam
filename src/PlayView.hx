@@ -35,6 +35,10 @@ class PlayView extends GameState {
 
 	final rand = new hxd.Rand(/* seed= */ 10);
 
+	var movingHandCard:Null<Card> = null;
+
+	static final STATION_RADIUS = 500.0;
+
 	override function init() {
 		setUpCamera();
 
@@ -90,10 +94,11 @@ class PlayView extends GameState {
 		// tracks.push({start: 1, end: 2});
 
 		stations.push(points[0].multiply(0.1).add(points[1].multiply(0.9)));
-		stations.push(points[1].multiply(0.1).add(points[0].multiply(0.9)));
+		// stations.push(points[1].multiply(0.1).add(points[0].multiply(0.9)));
 	}
 
 	function onReleaseHandCard(card:Card, pt:Point) {
+		movingHandCard = null;
 		var mapPt = pt.clone();
 		camera.screenToCamera(mapPt);
 
@@ -224,6 +229,9 @@ class PlayView extends GameState {
 		final card = new Card(type, handCardsContainer, this, pos);
 		handCards.set(card.obj, card);
 		card.onRelease = onReleaseHandCard;
+		card.onMove = (card, pt) -> {
+			movingHandCard = card;
+		};
 		return card;
 	}
 
@@ -269,6 +277,17 @@ class PlayView extends GameState {
 		}
 	}
 
+	function getClosestTrackPoint(pt) {
+		var closestPoint = null;
+		for (track in tracks) {
+			final closestPointTrack = projectToLineSegment(pt, points[track.start], points[track.end]);
+			if (closestPoint == null || closestPointTrack.distance(pt) < closestPoint.distance(pt)) {
+				closestPoint = closestPointTrack;
+			}
+		}
+		return closestPoint;
+	}
+
 	function onMapEvent(event:hxd.Event) {
 		event.propagate = false;
 
@@ -281,13 +300,7 @@ class PlayView extends GameState {
 			final pt = clickedPt.clone();
 			camera.screenToCamera(pt);
 
-			var closestPoint = null;
-			for (track in tracks) {
-				final closestPointTrack = projectToLineSegment(pt, points[track.start], points[track.end]);
-				if (closestPoint == null || closestPointTrack.distance(pt) < closestPoint.distance(pt)) {
-					closestPoint = closestPointTrack;
-				}
-			}
+			final closestPoint = getClosestTrackPoint(pt);
 			// For now you can't stop a construction in progress.
 			final addingTrack = (closestPoint.distance(pt) < 100 && (trackUnderConstruction == null || trackUnderConstruction.paid == 0));
 			if (addingTrack) {
@@ -421,6 +434,18 @@ class PlayView extends GameState {
 		drawGr.lineStyle();
 		for (station in stations) {
 			drawGr.drawCircle(station.x, station.y, 150);
+		}
+
+		if (movingHandCard != null && movingHandCard.type == Station) {
+			// Draw a circle for the station's range.
+			final cursorPos = toPoint(movingHandCard.obj);
+			camera.screenToCamera(cursorPos);
+			final trackPoint = getClosestTrackPoint(cursorPos);
+			if (trackPoint.distance(cursorPos) < STATION_RADIUS) {
+				drawGr.endFill();
+				drawGr.lineStyle(10, 0xffffff, 0.8);
+				drawGr.drawCircle(trackPoint.x, trackPoint.y, STATION_RADIUS);
+			}
 		}
 	}
 
