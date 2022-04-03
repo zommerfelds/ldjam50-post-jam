@@ -179,7 +179,7 @@ class PlayView extends GameState {
 		final stationPos = points[0].multiply(0.1).add(points[1].multiply(0.9));
 		final dir = points[1].sub(points[0]);
 		final rotation = Math.atan2(dir.y, dir.x);
-		placeStation(null, stationPos, rotation);
+		placeStation(null, stationPos, rotation, false);
 	}
 
 	function onReleaseHandCard(card:Card, pt:Point) {
@@ -221,7 +221,7 @@ class PlayView extends GameState {
 				final pointOnTrack = getClosestPointOnTrack(mapPt);
 				if (payDebtCard == null) {
 					if (placingStationValid(pt, mapPt, pointOnTrack.closestPoint)) {
-						placeStation(card, pointOnTrack.closestPoint, pointOnTrack.rotation);
+						placeStation(card, pointOnTrack.closestPoint, pointOnTrack.rotation, true);
 					} else {
 						showMessage("Place this card on a track to build a station.");
 						hxd.Res.invalid.play();
@@ -311,7 +311,7 @@ class PlayView extends GameState {
 		makeNextDeckCard();
 	}
 
-	function placeStation(stationCard, pointOnTrack, rotation) {
+	function placeStation(stationCard, pointOnTrack, rotation, makeMoney) {
 		hxd.Res.build.play();
 
 		addStation(pointOnTrack, rotation);
@@ -323,24 +323,28 @@ class PlayView extends GameState {
 		for (house in houses) {
 			if (pointOnTrack.distance(house.center) <= STATION_RADIUS && house.connectedStation == null) {
 				house.connectedStation = stations.length - 1;
-				final card = newHandCard(Money);
-				final screenPt = house.center.clone();
-				camera.cameraToScreen(screenPt);
-				card.obj.x = screenPt.x;
-				card.obj.y = screenPt.y;
-				card.obj.scale(0);
-				card.obj.rotation = Math.random() * 2 * Math.PI;
-				tween(card.obj, tweenTime, {
-					scaleX: Gui.scale(Card.NORMAL_CARD_SCALE),
-					scaleY: Gui.scale(Card.NORMAL_CARD_SCALE),
-					rotation: 0,
-				});
+				if (makeMoney) {
+					final card = newHandCard(Money);
+					final screenPt = house.center.clone();
+					camera.cameraToScreen(screenPt);
+					card.obj.x = screenPt.x;
+					card.obj.y = screenPt.y;
+					card.obj.scale(0);
+					card.obj.rotation = Math.random() * 2 * Math.PI;
+					tween(card.obj, tweenTime, {
+						scaleX: Gui.scale(Card.NORMAL_CARD_SCALE),
+						scaleY: Gui.scale(Card.NORMAL_CARD_SCALE),
+						rotation: 0,
+					});
+				}
 			}
 		}
-		Timer.delay(() -> {
-			hxd.Res.good.play();
-			arrangeHand();
-		}, Std.int(tweenTime * 0.8 * 1000));
+		if (makeMoney) {
+			Timer.delay(() -> {
+				hxd.Res.good.play();
+				arrangeHand();
+			}, Std.int(tweenTime * 0.8 * 1000));
+		}
 	}
 
 	function flipDeckCard(card:Card, pt:Point) {
