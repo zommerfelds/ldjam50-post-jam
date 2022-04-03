@@ -86,7 +86,10 @@ class PlayView extends GameState {
 
 		for (i in -10...10) {
 			for (j in -10...10) {
-				houses.push(new Point((i + rand.rand()) * 1000, (j + rand.rand()) * 1000));
+				houses.push({
+					center: new Point((i + rand.rand()) * 1000, (j + rand.rand()) * 1000),
+					connected: false,
+				});
 			}
 		}
 
@@ -104,7 +107,7 @@ class PlayView extends GameState {
 
 		switch (card.type) {
 			case Track:
-				if (trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
+				if (payDebtCard == null && trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
 					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
 					if (toPoint(placeholder).distance(mapPt) < 450) {
 						addCardToConstruction(card);
@@ -112,21 +115,30 @@ class PlayView extends GameState {
 				} else {
 					// Print message about how this works.
 				}
+				arrangeHand();
 			case Money:
 				if (payDebtCard != null) {
 					payMoneyForDebt(card);
 				} else {
 					// Print message about how this works.
 				}
+				arrangeHand();
 			case Station:
 				final pointOnTrack = getClosestPointOnTrack(mapPt);
-				if (pointOnTrack.distance(mapPt) < STATION_RADIUS) {
+				if (payDebtCard == null && placingStationValid(pt, mapPt, pointOnTrack)) {
 					placeStation(card, pointOnTrack);
+				} else {
+					arrangeHand();
 				}
 			default:
 				// Ignore the move.
+				arrangeHand();
 		}
-		arrangeHand();
+	}
+
+	function placingStationValid(screenPt, mapPt, pointOnTrack) {
+		return pointOnTrack.distance(mapPt) < STATION_RADIUS
+			&& screenPt.y < height - Gui.scale(Card.NORMAL_CARD_SCALE) * Card.CARD_HEIGHT * 1.2;
 	}
 
 	function addCardToConstruction(card) {
@@ -179,6 +191,26 @@ class PlayView extends GameState {
 	function placeStation(stationCard, pointOnTrack) {
 		stations.push(pointOnTrack);
 		removeHandCard(stationCard);
+
+		final tweenTime = 1.0;
+		for (house in houses) {
+			if (pointOnTrack.distance(house.center) <= STATION_RADIUS && !house.connected) {
+				house.connected = true;
+				final card = newHandCard(Money);
+				final screenPt = house.center.clone();
+				camera.cameraToScreen(screenPt);
+				card.obj.x = screenPt.x;
+				card.obj.y = screenPt.y;
+				card.obj.scale(0);
+				card.obj.rotation = Math.random() * 2 * Math.PI;
+				tween(card.obj, tweenTime, {
+					scaleX: Gui.scale(Card.NORMAL_CARD_SCALE),
+					scaleY: Gui.scale(Card.NORMAL_CARD_SCALE),
+					rotation: 0,
+				});
+			}
+		}
+		Timer.delay(arrangeHand, Std.int(tweenTime * 0.8 * 1000));
 	}
 
 	function onPlayDeckCard(card:Card, pt:Point) {
@@ -233,7 +265,7 @@ class PlayView extends GameState {
 		}
 	}
 
-	function newCardFromDeck() {
+	function newCardFromDeck():Card {
 		final type = switch (rand.rand()) {
 			case r if (r < 0.5): Track;
 			case r if (r < 0.8): Station;
@@ -250,7 +282,7 @@ class PlayView extends GameState {
 		return card;
 	}
 
-	function newHandCard(type:CardType) {
+	function newHandCard(type:CardType):Card {
 		final pos = getPositionForNewHandCard(type);
 		final card = new Card(type, handCardsContainer, this, pos);
 		handCards.set(card.obj, card);
@@ -341,18 +373,14 @@ class PlayView extends GameState {
 
 			final startDragPos = new Point(event.relX, event.relY);
 			var lastDragPos = startDragPos.clone();
-			var firstEvent = true;
 
 			// Using startCapture ensures we still get events when going over other interactives.
 			startCapture(event -> {
 				// Ignore multiple fingers
 				if (event.touchId != null && event.touchId != 0)
 					return;
-				if (firstEvent) {
-					// Some how the first event is messed up on desktop
-					firstEvent = false;
+				if (event.kind == EFocus) // Seems like the first focus event has broken coordinates.
 					return;
-				}
 				final pt = new Point(event.relX, event.relY);
 				camera.screenToCamera(pt);
 
@@ -367,8 +395,10 @@ class PlayView extends GameState {
 					// points[points.length - 1] = pt.clone();
 				} else {
 					// Moving camera
-					camera.x += (lastDragPos.x - event.relX) / camera.scaleX;
-					camera.y += (lastDragPos.y - event.relY) / camera.scaleY;
+					if (event.kind == EMove) {
+						camera.x += (lastDragPos.x - event.relX) / camera.scaleX;
+						camera.y += (lastDragPos.y - event.relY) / camera.scaleY;
+					}
 				}
 
 				if (clickedPt != null && startDragPos.distance(new Point(event.relX, event.relY)) > Gui.scale() * 30) {
@@ -377,12 +407,14 @@ class PlayView extends GameState {
 				}
 
 				lastDragPos = new Point(event.relX, event.relY);
+
+				if (event.kind == ERelease || event.kind == EReleaseOutside) {
+					stopCapture();
+					if (clickedPt != null && trackUnderConstruction != null && trackUnderConstruction.paid == 0) {
+						trackUnderConstruction = null;
+					}
+				}
 			});
-		} else if (event.kind == ERelease || event.kind == EReleaseOutside) {
-			stopCapture();
-			if (clickedPt != null && trackUnderConstruction != null && trackUnderConstruction.paid == 0) {
-				trackUnderConstruction = null;
-			}
 		}
 	}
 
@@ -393,16 +425,45 @@ class PlayView extends GameState {
 	}
 
 	function drawMap() {
+		var stationPreview = null;
+		if (movingHandCard != null && movingHandCard.type == Station) {
+			// Draw a circle for the station's range.
+			final screenPt = toPoint(movingHandCard.obj);
+			final mapPt = screenPt.clone();
+			camera.screenToCamera(mapPt);
+			final pointOnTrack = getClosestPointOnTrack(mapPt);
+			if (placingStationValid(screenPt, mapPt, pointOnTrack)) {
+				stationPreview = pointOnTrack;
+			}
+		}
+
 		drawGr.clear();
 		drawGr.beginFill(0x509450);
 		drawGr.drawRect(-10000, -10000, 20000, 20000);
 
-		drawGr.beginFill(0xc79f1a);
 		drawGr.lineStyle();
+		final w = 140;
+		final h = 200;
+
+		drawGr.beginFill(0xadcc47);
 		for (house in houses) {
-			final w = 140;
-			final h = 200;
-			drawGr.drawRect(house.x - w / 2, house.y - h / 2, w, h);
+			if (house.connected) {
+				drawGr.drawRect(house.center.x - w / 2, house.center.y - h / 2, w, h);
+			}
+		}
+		drawGr.beginFill(0xc79f1a);
+		for (house in houses) {
+			if ((stationPreview == null || stationPreview.distance(house.center) > STATION_RADIUS) && !house.connected) {
+				drawGr.drawRect(house.center.x - w / 2, house.center.y - h / 2, w, h);
+			}
+		}
+		if (stationPreview != null) {
+			drawGr.beginFill(0xe0c775);
+			for (house in houses) {
+				if (stationPreview.distance(house.center) <= STATION_RADIUS && !house.connected) {
+					drawGr.drawRect(house.center.x - w / 2, house.center.y - h / 2, w, h);
+				}
+			}
 		}
 
 		drawGr.beginFill(0x382c26);
@@ -463,16 +524,10 @@ class PlayView extends GameState {
 			drawGr.drawCircle(station.x, station.y, 150);
 		}
 
-		if (movingHandCard != null && movingHandCard.type == Station) {
-			// Draw a circle for the station's range.
-			final cursorPos = toPoint(movingHandCard.obj);
-			camera.screenToCamera(cursorPos);
-			final pointOnTrack = getClosestPointOnTrack(cursorPos);
-			if (pointOnTrack.distance(cursorPos) < STATION_RADIUS) {
-				drawGr.endFill();
-				drawGr.lineStyle(10, 0xffffff, 0.8);
-				drawGr.drawCircle(pointOnTrack.x, pointOnTrack.y, STATION_RADIUS);
-			}
+		if (stationPreview != null) {
+			drawGr.endFill();
+			drawGr.lineStyle(10, 0xffffff, 0.8);
+			drawGr.drawCircle(stationPreview.x, stationPreview.y, STATION_RADIUS);
 		}
 	}
 

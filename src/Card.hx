@@ -10,8 +10,8 @@ enum CardType {
 }
 
 class Card {
-	static final CARD_WIDTH = 21;
-	static final CARD_HEIGHT = 31;
+	public static final CARD_WIDTH = 21;
+	public static final CARD_HEIGHT = 31;
 
 	public static var CARD_TILES = null;
 	public static final NORMAL_CARD_SCALE = 5;
@@ -70,16 +70,12 @@ class Card {
 					rotation: 0,
 				});
 				onMove(this, pt);
+				if (e.kind == ERelease || e.kind == EReleaseOutside) {
+					scene.stopCapture();
+					onRelease(this, pt);
+				}
 			});
 		};
-		interactive.onRelease = (e) -> {
-			if (!isDragging)
-				return;
-			scene.stopCapture();
-			if (!canMove)
-				return;
-			onRelease(this, interactive.localToGlobal(new Point(e.relX, e.relY)));
-		}
 
 		homePos = toPoint(obj);
 		homeRotation = obj.rotation;
