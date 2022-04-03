@@ -38,15 +38,20 @@ class PlayView extends GameState {
 	var movingHandCard:Null<Card> = null;
 
 	static final STATION_RADIUS = 500.0;
+	static final MAP_PIXEL_SCALE = 9;
+
+	final houseTile = hxd.Res.house.toTile();
 
 	override function init() {
+		setUpTiles();
+
 		setUpCamera();
 
 		addEventListener(onMapEvent);
 
-		setUpGameModel();
-
 		addChild(drawGr);
+
+		setUpEntities();
 
 		setUpDeck();
 		setUpHand();
@@ -64,6 +69,10 @@ class PlayView extends GameState {
 		}
 	}
 
+	function setUpTiles() {
+		houseTile.setCenterRatio();
+	}
+
 	function setUpCamera() {
 		// Set up fixed camera for UI elements.
 		final uiCamera = new h2d.Camera(this);
@@ -79,17 +88,16 @@ class PlayView extends GameState {
 		camera.scale(s, s);
 	}
 
-	function setUpGameModel() {
+	function setUpEntities() {
 		points.push(new Point(-400, -700));
 		points.push(new Point(400, 700));
 		// points.push(new Point(800, 2000));
 
 		for (i in -10...10) {
 			for (j in -10...10) {
-				houses.push({
-					center: new Point((i + rand.rand()) * 1000, (j + rand.rand()) * 1000),
-					connected: false,
-				});
+				if (rand.rand() < 0.4) {
+					addHouse(new Point((i + rand.rand()) * 900, (j + rand.rand()) * 900), rand.random(4) * Math.PI / 2);
+				}
 			}
 		}
 
@@ -267,9 +275,9 @@ class PlayView extends GameState {
 
 	function newCardFromDeck():Card {
 		final type = switch (rand.rand()) {
-			case r if (r < 0.5): Track;
-			case r if (r < 0.8): Station;
-			case r if (r < 0.85): Money;
+			case r if (r < 0.4): Track;
+			case r if (r < 0.7): Station;
+			case r if (r < 0.8): Money;
 			default: Debt;
 		}
 		var card;
@@ -566,5 +574,19 @@ class PlayView extends GameState {
 		newHandCard(Station);
 		newHandCard(Station);
 		arrangeHand();
+	}
+
+	function addHouse(center:Point, rotation:Float) {
+		final bitmap = new h2d.Bitmap(houseTile, this);
+		bitmap.scale(MAP_PIXEL_SCALE);
+		bitmap.x = center.x;
+		bitmap.y = center.y;
+		bitmap.rotation = rotation;
+
+		houses.push({
+			center: center,
+			connected: false,
+			bitmap: bitmap,
+		});
 	}
 }
