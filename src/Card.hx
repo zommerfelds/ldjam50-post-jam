@@ -56,9 +56,11 @@ class Card {
 		final interactive = new h2d.Interactive(CARD_WIDTH, CARD_HEIGHT, obj);
 		interactive.x = -CARD_WIDTH / 2;
 		interactive.y = -CARD_HEIGHT / 2;
+		var isDragging = false;
 		interactive.onPush = (e) -> {
 			if (!canMove)
 				return;
+			isDragging = true;
 			scene.startCapture((e) -> {
 				final pt = scene.localToGlobal(new Point(e.relX, e.relY));
 				tween(obj, 0, {
@@ -69,6 +71,8 @@ class Card {
 			});
 		};
 		interactive.onRelease = (e) -> {
+			if (!isDragging)
+				return;
 			scene.stopCapture();
 			if (!canMove)
 				return;

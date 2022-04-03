@@ -1,8 +1,12 @@
+import haxe.Timer;
+import haxe.Exception;
 import motion.Actuate;
 import h2d.col.Point;
 import RenderUtils.*;
 import Card;
 import Utils.*;
+
+using Lambda;
 
 class PlayView extends GameState {
 	static final LAYER_MAP = 0;
@@ -24,6 +28,7 @@ class PlayView extends GameState {
 	final fpsText = new Gui.Text("", null, 0.5);
 	final constructionCardPlaceholders:Array<h2d.Bitmap> = [];
 	var clickedPt = null;
+	var payDebtCard:Null<Card> = null;
 
 	final handCards:Map<h2d.Object, Card> = [];
 	final handCardsContainer = new h2d.Object();
@@ -96,13 +101,10 @@ class PlayView extends GameState {
 				if (trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
 					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
 					if (toPoint(placeholder).distance(mapPt) < 450) {
-						trace("Building track!");
-						handCards.remove(card.obj);
-
 						trackUnderConstruction.cards.push(card);
 
 						// Move to map layer.
-						card.obj.remove();
+						removeHandCard(card);
 						addChild(card.obj);
 
 						var cardPos = toPoint(card.obj);
@@ -130,8 +132,19 @@ class PlayView extends GameState {
 						});
 					}
 				}
-			case Station:
+			case Money if (payDebtCard != null):
+				removeHandCard(card);
+				tween(payDebtCard.obj, 1.0, {
+					scaleX: 0,
+					scaleY: 0,
+					alpha: 0,
+				}).onComplete(() -> {
+					payDebtCard.obj.remove();
+					payDebtCard = null;
+				});
+				makeNextDeckCard();
 			default:
+				// Ignore the move.
 		}
 		arrangeHand();
 	}
@@ -149,27 +162,54 @@ class PlayView extends GameState {
 			tween(card.obj, 0.4, {
 				scaleX: 0,
 			}, /* overwrite= */ false).ease(motion.easing.Sine.easeIn).onComplete(() -> {
-				final newCard = newRandomHandCard();
+				final newCard = newCardFromDeck();
 				copyTransform(card.obj, newCard.obj);
 				card.obj.remove();
 				tween(newCard.obj, 0.3, {
 					scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE),
 				}).ease(motion.easing.Sine.easeOut).onComplete(() -> {
-					arrangeHand();
-					makeNextDeckCard();
+					handleNewCard(newCard);
 				});
 			});
 		});
 	}
 
-	function newRandomHandCard() {
+	function handleNewCard(card:Card) {
+		switch (card.type) {
+			case Debt:
+				payDebtCard = card;
+				tween(card.obj, 1.0, {
+					scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
+					scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
+				});
+				if (!Lambda.exists(handCards, c -> c.type == Money)) {
+					Timer.delay(() -> App.instance.switchState(new GameOverView()), 2000);
+				}
+			case Money | Track | Station:
+				// Let card go to hand (it's already assigned to the hand).
+				card.canMove = true;
+				arrangeHand();
+				makeNextDeckCard();
+			case Backside:
+				throw new Exception("Invalid new card: " + card.type);
+		}
+	}
+
+	function newCardFromDeck() {
 		final type = switch (rand.rand()) {
 			case r if (r < 0.5): Track;
 			case r if (r < 0.8): Station;
 			case r if (r < 0.85): Money;
 			default: Debt;
 		}
-		return newHandCard(type);
+		var card;
+		if (type == Debt) {
+			card = newNonHandCard(Debt);
+		} else {
+			card = newHandCard(type);
+		}
+		card.canMove = false;
+		return card;
 	}
 
 	function newHandCard(type:CardType) {
@@ -181,7 +221,7 @@ class PlayView extends GameState {
 	}
 
 	function newNonHandCard(type:CardType) {
-		return new Card(Backside, this, this, LAYER_UI);
+		return new Card(type, this, this, LAYER_UI);
 	}
 
 	function getPositionForNewHandCard(type:CardType) {
@@ -202,10 +242,16 @@ class PlayView extends GameState {
 		};
 	}
 
+	function removeHandCard(card:Card) {
+		handCards.remove(card.obj);
+		card.obj.remove();
+	}
+
 	function arrangeHand() {
 		var i = 0;
 		final numCards = handCardsContainer.children.length;
-		for (cardObj in handCardsContainer) {
+		trace("numCards: " + numCards);
+		for (cardObj in handCardsContainer.children) {
 			final card = handCards[cardObj];
 			card.homePos.x = width * 0.5 + Math.min(width * 0.75, numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
 			card.homePos.y = height - Gui.scale(50);
@@ -272,7 +318,7 @@ class PlayView extends GameState {
 
 				lastDragPos = new Point(event.relX, event.relY);
 			});
-		} else if (event.kind == ERelease) {
+		} else if (event.kind == ERelease || event.kind == EReleaseOutside) {
 			stopCapture();
 			if (clickedPt != null && trackUnderConstruction != null && trackUnderConstruction.paid == 0) {
 				trackUnderConstruction = null;
