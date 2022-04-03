@@ -75,7 +75,7 @@ class PlayView extends GameState {
 		camera.anchorY = 0.5;
 		camera.clipViewport = true;
 		camera.layerVisible = (layer) -> layer == LAYER_MAP;
-		final s = Gui.scale() * 0.4;
+		final s = Gui.scale() * 0.35;
 		camera.scale(s, s);
 	}
 
@@ -107,52 +107,78 @@ class PlayView extends GameState {
 				if (trackUnderConstruction != null && trackUnderConstruction.paid < trackUnderConstruction.cost) {
 					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
 					if (toPoint(placeholder).distance(mapPt) < 450) {
-						trackUnderConstruction.cards.push(card);
-
-						// Move to map layer.
-						removeHandCard(card);
-						addChild(card.obj);
-
-						var cardPos = toPoint(card.obj);
-						camera.screenToCamera(cardPos);
-						card.obj.x = cardPos.x;
-						card.obj.y = cardPos.y;
-
-						trackUnderConstruction.paid++;
-
-						tween(card.obj, 1.0, {
-							x: placeholder.x,
-							y: placeholder.y,
-							scaleX: placeholder.scaleX,
-							scaleY: placeholder.scaleY,
-						}).onComplete(() -> {
-							if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
-								points.push(trackUnderConstruction.start);
-								points.push(trackUnderConstruction.end);
-								tracks.push({start: points.length - 2, end: points.length - 1});
-								for (card in trackUnderConstruction.cards) {
-									card.obj.remove();
-								}
-								trackUnderConstruction = null;
-							}
-						});
+						addCardToConstruction(card);
 					}
+				} else {
+					// Print message about how this works.
 				}
-			case Money if (payDebtCard != null):
-				removeHandCard(card);
-				tween(payDebtCard.obj, 1.0, {
-					scaleX: 0,
-					scaleY: 0,
-					alpha: 0,
-				}).onComplete(() -> {
-					payDebtCard.obj.remove();
-					payDebtCard = null;
-				});
-				makeNextDeckCard();
+			case Money:
+				if (payDebtCard != null) {
+					payMoneyForDebt(card);
+				} else {
+					// Print message about how this works.
+				}
+			case Station:
+				final pointOnTrack = getClosestPointOnTrack(mapPt);
+				if (pointOnTrack.distance(mapPt) < STATION_RADIUS) {
+					placeStation(card, pointOnTrack);
+				}
 			default:
 				// Ignore the move.
 		}
 		arrangeHand();
+	}
+
+	function addCardToConstruction(card) {
+		final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
+		trackUnderConstruction.cards.push(card);
+
+		// Move to map layer.
+		removeHandCard(card);
+		addChild(card.obj);
+
+		var cardPos = toPoint(card.obj);
+		camera.screenToCamera(cardPos);
+		card.obj.x = cardPos.x;
+		card.obj.y = cardPos.y;
+		card.obj.scale(1 / camera.scaleX);
+
+		trackUnderConstruction.paid++;
+
+		tween(card.obj, 0.7, {
+			x: placeholder.x,
+			y: placeholder.y,
+			scaleX: placeholder.scaleX,
+			scaleY: placeholder.scaleY,
+		}).ease(motion.easing.Cubic.easeOut).onComplete(() -> {
+			if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
+				points.push(trackUnderConstruction.start);
+				points.push(trackUnderConstruction.end);
+				tracks.push({start: points.length - 2, end: points.length - 1});
+				for (card in trackUnderConstruction.cards) {
+					card.obj.remove();
+				}
+				trackUnderConstruction = null;
+			}
+		});
+	}
+
+	function payMoneyForDebt(moneyCard) {
+		removeHandCard(moneyCard);
+		tween(payDebtCard.obj, 1.0, {
+			scaleX: 0,
+			scaleY: 0,
+			alpha: 0,
+		}).onComplete(() -> {
+			payDebtCard.obj.remove();
+			payDebtCard = null;
+		});
+		makeNextDeckCard();
+	}
+
+	function placeStation(stationCard, pointOnTrack) {
+		stations.push(pointOnTrack);
+		removeHandCard(stationCard);
 	}
 
 	function onPlayDeckCard(card:Card, pt:Point) {
@@ -277,7 +303,7 @@ class PlayView extends GameState {
 		}
 	}
 
-	function getClosestTrackPoint(pt) {
+	function getClosestPointOnTrack(pt) {
 		var closestPoint = null;
 		for (track in tracks) {
 			final closestPointTrack = projectToLineSegment(pt, points[track.start], points[track.end]);
@@ -300,7 +326,7 @@ class PlayView extends GameState {
 			final pt = clickedPt.clone();
 			camera.screenToCamera(pt);
 
-			final closestPoint = getClosestTrackPoint(pt);
+			final closestPoint = getClosestPointOnTrack(pt);
 			// For now you can't stop a construction in progress.
 			final addingTrack = (closestPoint.distance(pt) < 100 && (trackUnderConstruction == null || trackUnderConstruction.paid == 0));
 			if (addingTrack) {
@@ -441,11 +467,11 @@ class PlayView extends GameState {
 			// Draw a circle for the station's range.
 			final cursorPos = toPoint(movingHandCard.obj);
 			camera.screenToCamera(cursorPos);
-			final trackPoint = getClosestTrackPoint(cursorPos);
-			if (trackPoint.distance(cursorPos) < STATION_RADIUS) {
+			final pointOnTrack = getClosestPointOnTrack(cursorPos);
+			if (pointOnTrack.distance(cursorPos) < STATION_RADIUS) {
 				drawGr.endFill();
 				drawGr.lineStyle(10, 0xffffff, 0.8);
-				drawGr.drawCircle(trackPoint.x, trackPoint.y, STATION_RADIUS);
+				drawGr.drawCircle(pointOnTrack.x, pointOnTrack.y, STATION_RADIUS);
 			}
 		}
 	}
