@@ -38,7 +38,7 @@ class PlayView extends GameState {
 	final rand = new hxd.Rand(/* seed= */ 10);
 	var movingHandCard:Null<Card> = null;
 
-	static final STATION_RADIUS = 700.0;
+	static final STATION_RADIUS = 800.0;
 	static final MAP_PIXEL_SCALE = 9;
 
 	final tileHouse = hxd.Res.house.toTile();
@@ -104,7 +104,7 @@ class PlayView extends GameState {
 
 		for (i in -10...10) {
 			for (j in -10...10) {
-				if (rand.rand() < 0.4) {
+				if (rand.rand() < 0.2) {
 					addHouse(new Point((i + rand.rand()) * 900, (j + rand.rand()) * 900), rand.random(4) * Math.PI / 2);
 				}
 			}
