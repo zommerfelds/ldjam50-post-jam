@@ -155,8 +155,18 @@ class PlayView extends GameState {
 	}
 
 	function placingStationValid(screenPt, mapPt, pointOnTrack) {
-		return pointOnTrack.distance(mapPt) < STATION_RADIUS
-			&& screenPt.y < height - Gui.scale(Card.NORMAL_CARD_SCALE) * Card.CARD_HEIGHT * 1.2;
+		if (pointOnTrack.distance(mapPt) > STATION_RADIUS
+			|| screenPt.y > height - Gui.scale(Card.NORMAL_CARD_SCALE) * Card.CARD_HEIGHT * 1.2)
+			return false;
+		for (station in stations) {
+			if (pointOnTrack.distance(toPoint(station)) < 450)
+				return false;
+		}
+		for (house in houses) {
+			if (pointOnTrack.distance(toPoint(house.bitmap)) < 450)
+				return false;
+		}
+		return true;
 	}
 
 	function addCardToConstruction(card) {
