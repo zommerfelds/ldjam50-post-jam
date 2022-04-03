@@ -58,6 +58,8 @@ class PlayView extends GameState {
 	var cardsDrawn = 0;
 	var zooming = 0;
 
+	var musicChanel:hxd.snd.Channel;
+
 	public function new() {
 		super();
 		rand = new hxd.Rand(seed);
@@ -65,6 +67,7 @@ class PlayView extends GameState {
 	}
 
 	override function init() {
+		musicChanel = hxd.Res.song.play(/* loop= */ true, /* volume= */ 0.5);
 		setUpTiles();
 
 		setUpCamera();
@@ -349,6 +352,7 @@ class PlayView extends GameState {
 						scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
 					});
 				} else {
+					musicChanel.fadeTo(/* volume= */ 0, /* time=*/ 3.0);
 					tween(card.obj, 3.0,
 						{
 							scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE * 4),
