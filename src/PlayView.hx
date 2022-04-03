@@ -349,16 +349,18 @@ class PlayView extends GameState {
 
 	function getClosestPointOnTrack(pt) {
 		var closestPoint = null;
+		var closestTrack = null;
 		for (track in tracks) {
 			final closestPointTrack = projectToLineSegment(pt, points[track.start], points[track.end]);
 			if (closestPoint == null || closestPointTrack.distance(pt) < closestPoint.distance(pt)) {
 				closestPoint = closestPointTrack;
+				closestTrack = track;
 			}
 		}
-		final diff = closestPoint.sub(pt);
+		final trackDir = points[closestTrack.start].sub(points[closestTrack.end]);
 		return {
 			closestPoint: closestPoint,
-			rotation: Math.atan2(diff.y, diff.x) + Math.PI * 0.5,
+			rotation: Math.atan2(trackDir.y, trackDir.x),
 		};
 	}
 
