@@ -1,3 +1,4 @@
+import motion.Actuate;
 import h2d.col.Point;
 import RenderUtils.*;
 import Card;
@@ -24,7 +25,10 @@ class PlayView extends GameState {
 	final constructionCardPlaceholders:Array<h2d.Bitmap> = [];
 	var clickedPt = null;
 
-	final handCards:Array<Card> = [];
+	final handCards:Map<h2d.Object, Card> = [];
+	final handCardsContainer = new h2d.Object();
+
+	final rand = new hxd.Rand(/* seed= */ 10);
 
 	override function init() {
 		Card.init();
@@ -36,32 +40,18 @@ class PlayView extends GameState {
 
 		addChild(drawGr);
 
-		handCards.push(new Card(Track, this, LAYER_UI));
-		handCards.push(new Card(Money, this, LAYER_UI));
-		handCards.push(new Card(Track, this, LAYER_UI));
-		handCards.push(new Card(Station, this, LAYER_UI));
-		handCards.push(new Card(Station, this, LAYER_UI));
+		addChildAt(handCardsContainer, LAYER_UI);
+		newHandCard(Money);
+		newHandCard(Track);
+		newHandCard(Track);
+		newHandCard(Station);
+		newHandCard(Station);
 		for (card in handCards) {
-			card.obj.x = width / 2;
-			card.obj.y = height / 2;
 			card.onRelease = onReleaseHandCard;
 		}
 		arrangeHand();
 
-		final deck = new Card(Backside, this, LAYER_UI);
-		deck.homePos.x = Gui.scale(74);
-		deck.homePos.y = height - Gui.scale(252);
-		deck.returnToHomePos();
-		deck.canMove = false;
-		final deck = new Card(Backside, this, LAYER_UI);
-		deck.homePos.x = Gui.scale(77);
-		deck.homePos.y = height - Gui.scale(251);
-		deck.returnToHomePos();
-		deck.canMove = false;
-		final deckNext = new Card(Backside, this, LAYER_UI);
-		deckNext.homePos.x = Gui.scale(80);
-		deckNext.homePos.y = height - Gui.scale(250);
-		deckNext.returnToHomePos();
+		setUpDeck();
 
 		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
 			addChildAt(fpsText, LAYER_UI);
@@ -90,8 +80,6 @@ class PlayView extends GameState {
 	}
 
 	function setUpGameModel() {
-		final rand = new hxd.Rand(/* seed= */ 10);
-
 		points.push(new Point(-400, -700));
 		points.push(new Point(400, 700));
 		// points.push(new Point(800, 2000));
@@ -119,7 +107,7 @@ class PlayView extends GameState {
 					final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
 					if (toPoint(placeholder).distance(mapPt) < 450) {
 						trace("Building track!");
-						handCards.remove(card);
+						handCards.remove(card.obj);
 
 						trackUnderConstruction.cards.push(card);
 
@@ -158,12 +146,80 @@ class PlayView extends GameState {
 		arrangeHand();
 	}
 
+	function onPlayDeckCard(card:Card, pt:Point) {
+		card.canMove = false;
+		tween(card.obj, 1.0, {
+			x: width / 2,
+			y: height / 2,
+			scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE),
+			scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE),
+		});
+
+		Actuate.timer(0.2).onComplete(() -> {
+			tween(card.obj, 0.4, {
+				scaleX: 0,
+			}, /* overwrite= */ false).ease(motion.easing.Sine.easeIn).onComplete(() -> {
+				final newCard = drawNewCard();
+				copyTransform(card.obj, newCard.obj);
+				card.obj.remove();
+				tween(newCard.obj, 0.3, {
+					scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE),
+				}).ease(motion.easing.Sine.easeOut).onComplete(() -> {
+					arrangeHand();
+					makeNextDeckCard();
+				});
+			});
+		});
+	}
+
+	function drawNewCard() {
+		final type = switch (rand.rand()) {
+			case r if (r < 0.5): Track;
+			case r if (r < 0.8): Station;
+			case r if (r < 0.85): Money;
+			default: Debt;
+		}
+		return newHandCard(type);
+	}
+
+	function newHandCard(type:CardType) {
+		final pos = getPositionForNewHandCard(type);
+		final card = new Card(type, handCardsContainer, this, pos);
+		handCards.set(card.obj, card);
+		return card;
+	}
+
+	function newNonHandCard(type:CardType) {
+		return new Card(Backside, this, this, LAYER_UI);
+	}
+
+	function getPositionForNewHandCard(type:CardType) {
+		for (i in 0...handCardsContainer.children.length) {
+			if (handOrder(handCards[handCardsContainer.getChildAt(i)].type) > handOrder(type)) {
+				return i;
+			}
+		}
+		return handCardsContainer.children.length;
+	}
+
+	static function handOrder(type:CardType) {
+		return switch (type) {
+			case Money: 0;
+			case Track: 1;
+			case Station: 2;
+			default: 999; // Should not be on the hand
+		};
+	}
+
 	function arrangeHand() {
 		var i = 0;
-		for (card in handCards) {
-			card.homePos.x = width * 0.5 + Math.min(width * 0.75, handCards.length * Gui.scale(60)) * (i / (handCards.length - 1) - 0.5);
+		final numCards = handCardsContainer.children.length;
+		for (cardObj in handCardsContainer) {
+			final card = handCards[cardObj];
+			card.homePos.x = width * 0.5 + Math.min(width * 0.75, numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
 			card.homePos.y = height - Gui.scale(50);
-			card.homeRotation = (i / (handCards.length - 1) - 0.5) * Math.PI * 0.2;
+			card.homeRotation = (i / (numCards - 1) - 0.5) * Math.PI * 0.2;
+			card.homeScale = Card.NORMAL_CARD_SCALE;
 			card.returnToHomePos();
 			i++;
 		}
@@ -227,7 +283,7 @@ class PlayView extends GameState {
 			});
 		} else if (event.kind == ERelease) {
 			stopCapture();
-			if (clickedPt != null && trackUnderConstruction.paid == 0) {
+			if (clickedPt != null && trackUnderConstruction != null && trackUnderConstruction.paid == 0) {
 				trackUnderConstruction = null;
 			}
 		}
@@ -308,5 +364,32 @@ class PlayView extends GameState {
 		for (station in stations) {
 			drawGr.drawCircle(station.x, station.y, 150);
 		}
+	}
+
+	function setUpDeck() {
+		final deck = newNonHandCard(Backside);
+		deck.homePos.x = Gui.scale(74);
+		deck.homePos.y = height - Gui.scale(252);
+		deck.returnToHomePos(0.0);
+		deck.canMove = false;
+		final deck = newNonHandCard(Backside);
+		deck.homePos.x = Gui.scale(77);
+		deck.homePos.y = height - Gui.scale(251);
+		deck.returnToHomePos(0.0);
+		deck.canMove = false;
+		final deck = newNonHandCard(Backside);
+		deck.homePos.x = Gui.scale(80);
+		deck.homePos.y = height - Gui.scale(250);
+		deck.returnToHomePos(0.0);
+		deck.canMove = false;
+		makeNextDeckCard();
+	}
+
+	function makeNextDeckCard() {
+		final deckNext = newNonHandCard(Backside);
+		deckNext.homePos.x = Gui.scale(80);
+		deckNext.homePos.y = height - Gui.scale(250);
+		deckNext.returnToHomePos(0.0);
+		deckNext.onRelease = onPlayDeckCard;
 	}
 }

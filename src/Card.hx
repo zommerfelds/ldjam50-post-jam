@@ -14,6 +14,8 @@ class Card {
 	static final CARD_HEIGHT = 31;
 
 	public static var CARD_TILES = null;
+	public static final NORMAL_CARD_SCALE = 5;
+	public static final FULLSCREEN_CARD_SCALE = 20;
 
 	static public function init() {
 		CARD_TILES = [
@@ -32,17 +34,24 @@ class Card {
 	public final obj:h2d.Object;
 	public var homePos = new Point();
 	public var homeRotation = 0.0;
+	public var homeScale = NORMAL_CARD_SCALE; // Gui.scale will be applied on top
 	public var canMove = true;
 	public var onRelease = (card:Card, pt:Point) -> {
 		card.returnToHomePos();
 	};
 
-	public function new(type:CardType, scene:h2d.Scene, layer:Int) {
+	public function new(type:CardType, parent:h2d.Object, scene:h2d.Scene, pos = null) {
 		this.type = type;
 
 		obj = new h2d.Bitmap(CARD_TILES[type]);
-		obj.scale(Gui.scale(5));
-		scene.addChildAt(obj, layer);
+		obj.x = scene.width / 2;
+		obj.y = scene.height / 2;
+		obj.scale(Gui.scale(NORMAL_CARD_SCALE));
+		if (pos == null) {
+			parent.addChild(obj);
+		} else {
+			parent.addChildAt(obj, pos);
+		}
 
 		final interactive = new h2d.Interactive(CARD_WIDTH, CARD_HEIGHT, obj);
 		interactive.x = -CARD_WIDTH / 2;
@@ -60,19 +69,23 @@ class Card {
 			});
 		};
 		interactive.onRelease = (e) -> {
-			onRelease(this, interactive.localToGlobal(new Point(e.relX, e.relY)));
 			scene.stopCapture();
+			if (!canMove)
+				return;
+			onRelease(this, interactive.localToGlobal(new Point(e.relX, e.relY)));
 		}
 
 		homePos = toPoint(obj);
 		homeRotation = obj.rotation;
 	}
 
-	public function returnToHomePos() {
-		tween(obj, 1.0, {
+	public function returnToHomePos(time = 1.0) {
+		tween(obj, time, {
 			x: homePos.x,
 			y: homePos.y,
 			rotation: homeRotation,
+			scaleX: Gui.scale(homeScale),
+			scaleY: Gui.scale(homeScale),
 		});
 	}
 }

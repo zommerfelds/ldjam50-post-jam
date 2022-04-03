@@ -87,7 +87,15 @@ class Utils {
 	}
 
 	/** Tween for Heaps objects0**/
-	public static function tween(obj, time:Float, properties:Dynamic) {
-		return Actuate.tween(obj, time, properties).onUpdate(() -> posUpdated(obj)).onComplete(() -> posUpdated(obj));
+	public static function tween(obj, time:Float, properties:Dynamic, overwrite = true) {
+		return Actuate.tween(obj, time, properties, overwrite).onUpdate(() -> posUpdated(obj)).onComplete(() -> posUpdated(obj));
+	}
+
+	public static function copyTransform(fromObj:h2d.Object, toObj:h2d.Object) {
+		toObj.x = fromObj.x;
+		toObj.y = fromObj.y;
+		toObj.scaleX = fromObj.scaleX;
+		toObj.scaleY = fromObj.scaleY;
+		toObj.rotation = fromObj.rotation;
 	}
 }
