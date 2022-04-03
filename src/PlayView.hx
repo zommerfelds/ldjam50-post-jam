@@ -40,7 +40,8 @@ class PlayView extends GameState {
 	static final STATION_RADIUS = 700.0;
 	static final MAP_PIXEL_SCALE = 9;
 
-	final houseTile = hxd.Res.house.toTile();
+	final tileHouse = hxd.Res.house.toTile();
+	final tileStation = hxd.Res.station.toTile();
 
 	override function init() {
 		setUpTiles();
@@ -70,7 +71,8 @@ class PlayView extends GameState {
 	}
 
 	function setUpTiles() {
-		houseTile.setCenterRatio();
+		tileHouse.setCenterRatio();
+		tileStation.setCenterRatio();
 	}
 
 	function setUpCamera() {
@@ -104,8 +106,10 @@ class PlayView extends GameState {
 		tracks.push({start: 0, end: 1});
 		// tracks.push({start: 1, end: 2});
 
-		stations.push(points[0].multiply(0.1).add(points[1].multiply(0.9)));
-		// stations.push(points[1].multiply(0.1).add(points[0].multiply(0.9)));
+		final stationPos = points[0].multiply(0.1).add(points[1].multiply(0.9));
+		final dir = points[1].sub(points[0]);
+		final rotation = Math.atan2(dir.y, dir.x);
+		addStation(stationPos, rotation);
 	}
 
 	function onReleaseHandCard(card:Card, pt:Point) {
@@ -133,8 +137,8 @@ class PlayView extends GameState {
 				arrangeHand();
 			case Station:
 				final pointOnTrack = getClosestPointOnTrack(mapPt);
-				if (payDebtCard == null && placingStationValid(pt, mapPt, pointOnTrack)) {
-					placeStation(card, pointOnTrack);
+				if (payDebtCard == null && placingStationValid(pt, mapPt, pointOnTrack.closestPoint)) {
+					placeStation(card, pointOnTrack.closestPoint, pointOnTrack.rotation);
 				} else {
 					arrangeHand();
 				}
@@ -196,8 +200,8 @@ class PlayView extends GameState {
 		makeNextDeckCard();
 	}
 
-	function placeStation(stationCard, pointOnTrack) {
-		stations.push(pointOnTrack);
+	function placeStation(stationCard, pointOnTrack, rotation) {
+		addStation(pointOnTrack, rotation);
 		removeHandCard(stationCard);
 
 		final tweenTime = 1.0;
@@ -351,7 +355,11 @@ class PlayView extends GameState {
 				closestPoint = closestPointTrack;
 			}
 		}
-		return closestPoint;
+		final diff = closestPoint.sub(pt);
+		return {
+			closestPoint: closestPoint,
+			rotation: Math.atan2(diff.y, diff.x) + Math.PI * 0.5,
+		};
 	}
 
 	function onMapEvent(event:hxd.Event) {
@@ -366,7 +374,7 @@ class PlayView extends GameState {
 			final pt = clickedPt.clone();
 			camera.screenToCamera(pt);
 
-			final closestPoint = getClosestPointOnTrack(pt);
+			final closestPoint = getClosestPointOnTrack(pt).closestPoint;
 			// For now you can't stop a construction in progress.
 			final addingTrack = (closestPoint.distance(pt) < 100 && (trackUnderConstruction == null || trackUnderConstruction.paid == 0));
 			if (addingTrack) {
@@ -440,8 +448,8 @@ class PlayView extends GameState {
 			final mapPt = screenPt.clone();
 			camera.screenToCamera(mapPt);
 			final pointOnTrack = getClosestPointOnTrack(mapPt);
-			if (placingStationValid(screenPt, mapPt, pointOnTrack)) {
-				stationPreview = pointOnTrack;
+			if (placingStationValid(screenPt, mapPt, pointOnTrack.closestPoint)) {
+				stationPreview = pointOnTrack.closestPoint;
 			}
 		}
 
@@ -570,19 +578,26 @@ class PlayView extends GameState {
 	}
 
 	function addHouse(center:Point, rotation:Float) {
-		// Could use normal map to make sun look better
-		// https://community.heaps.io/t/solved-trying-making-2d-lighting-shaders-with-normal-maps/255
-		final bitmap = new h2d.Bitmap(houseTile, this);
-		bitmap.scale(MAP_PIXEL_SCALE);
-		bitmap.x = center.x;
-		bitmap.y = center.y;
-		bitmap.rotation = rotation;
-		bitmap.filter = new h2d.filter.DropShadow(4.0, -rotation + Math.PI, 0, 0.6);
-
 		houses.push({
 			center: center,
 			connectedStation: null,
-			bitmap: bitmap,
+			bitmap: makeBitmap(tileHouse, center, rotation),
 		});
+	}
+
+	function addStation(center:Point, rotation:Float) {
+		stations.push(makeBitmap(tileStation, center, rotation));
+	}
+
+	function makeBitmap(tile, pos, rotation) {
+		// Could use normal map to make sun look better
+		// https://community.heaps.io/t/solved-trying-making-2d-lighting-shaders-with-normal-maps/255
+		final bitmap = new h2d.Bitmap(tile, this);
+		bitmap.x = pos.x;
+		bitmap.y = pos.y;
+		bitmap.rotation = rotation;
+		bitmap.scale(MAP_PIXEL_SCALE);
+		bitmap.filter = new h2d.filter.DropShadow(4.0, -rotation + Math.PI, 0, 0.6);
+		return bitmap;
 	}
 }
