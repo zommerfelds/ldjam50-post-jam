@@ -6,10 +6,14 @@ class App extends HerbalTeaApp {
 	}
 
 	override function onload() {
+		Card.init();
+
 		final params = new js.html.URLSearchParams(js.Browser.window.location.search);
 		switch (params.get("start")) {
 			case "game":
 				switchState(new PlayView());
+			case "gameover":
+				switchState(new GameOverView());
 			default:
 				switchState(new MenuView());
 		}

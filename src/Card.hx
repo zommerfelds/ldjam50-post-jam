@@ -36,7 +36,7 @@ class Card {
 	public var homeRotation = 0.0;
 	public var homeScale = NORMAL_CARD_SCALE; // Gui.scale will be applied on top
 	public var canMove = true;
-	public var onRelease = (card:Card, pt:Point) -> {
+	public var onRelease:(Card, Point) -> Void = (card, pt) -> {
 		card.returnToHomePos();
 	};
 
@@ -84,7 +84,7 @@ class Card {
 	}
 
 	public function returnToHomePos(time = 1.0) {
-		tween(obj, time, {
+		return tween(obj, time, {
 			x: homePos.x,
 			y: homePos.y,
 			rotation: homeRotation,

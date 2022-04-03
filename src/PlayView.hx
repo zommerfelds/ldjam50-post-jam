@@ -36,7 +36,6 @@ class PlayView extends GameState {
 	final rand = new hxd.Rand(/* seed= */ 10);
 
 	override function init() {
-		Card.init();
 		setUpCamera();
 
 		addEventListener(onMapEvent);
@@ -178,12 +177,18 @@ class PlayView extends GameState {
 		switch (card.type) {
 			case Debt:
 				payDebtCard = card;
-				tween(card.obj, 1.0, {
-					scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
-					scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
-				});
-				if (!Lambda.exists(handCards, c -> c.type == Money)) {
-					Timer.delay(() -> App.instance.switchState(new GameOverView()), 2000);
+				if (Lambda.exists(handCards, c -> c.type == Money)) {
+					tween(card.obj, 1.0, {
+						scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
+						scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE / 2),
+					});
+				} else {
+					tween(card.obj, 3.0,
+						{
+							scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE * 4),
+							scaleY: Gui.scale(Card.FULLSCREEN_CARD_SCALE * 4),
+							rotation: Math.PI * 2,
+						}).ease(motion.easing.Cubic.easeIn).delay(0.2).onComplete(() -> App.instance.switchState(new GameOverView()));
 				}
 			case Money | Track | Station:
 				// Let card go to hand (it's already assigned to the hand).
@@ -221,6 +226,7 @@ class PlayView extends GameState {
 	}
 
 	function newNonHandCard(type:CardType) {
+		// TODO: The LAYER thing is likely wrong here, not sure how it works.
 		return new Card(type, this, this, LAYER_UI);
 	}
 
