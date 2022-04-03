@@ -331,7 +331,8 @@ class PlayView extends GameState {
 				camera.screenToCamera(pt);
 
 				if (addingTrack) {
-					final newCost = Math.ceil(trackUnderConstruction.start.distance(pt) / 700);
+					// The longer you build the less it costs.
+					final newCost = Math.ceil(Math.sqrt(trackUnderConstruction.start.distance(pt) / 600));
 					if (newCost <= 5) {
 						trackUnderConstruction.end = pt.clone();
 						trackUnderConstruction.cost = newCost;
