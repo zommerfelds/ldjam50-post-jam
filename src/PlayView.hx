@@ -47,6 +47,7 @@ class PlayView extends GameState {
 	final mapObjects = new h2d.Object();
 
 	var cardsDrawn = 0;
+	var zooming = 0;
 
 	override function init() {
 		setUpTiles();
@@ -61,6 +62,8 @@ class PlayView extends GameState {
 
 		setUpDeck();
 		setUpHand();
+
+		setUpZoomButtons();
 
 		if (new js.html.URLSearchParams(js.Browser.window.location.search).get("fps") != null) {
 			addChildAt(fpsText, LAYER_UI);
@@ -411,6 +414,10 @@ class PlayView extends GameState {
 		if (event.touchId != null && event.touchId != 0)
 			return;
 
+		if (event.kind == EWheel) {
+			scaleCamera(Math.exp(-event.wheelDelta * 0.3));
+		}
+
 		if (event.kind == EPush) {
 			clickedPt = new Point(event.relX, event.relY);
 			final pt = clickedPt.clone();
@@ -505,6 +512,14 @@ class PlayView extends GameState {
 		drawMap();
 
 		fpsText.text = "FPS: " + Math.round(hxd.Timer.fps());
+
+		scaleCamera(Math.exp(dt * zooming * 2.0));
+	}
+
+	function scaleCamera(scale:Float) {
+		final s = Math.max(0.05, Math.min(1, camera.scaleX * scale));
+		camera.scaleX = s;
+		camera.scaleY = s;
 	}
 
 	function drawMap() {
@@ -676,5 +691,41 @@ class PlayView extends GameState {
 		bitmap.scale(MAP_PIXEL_SCALE);
 		bitmap.filter = new h2d.filter.DropShadow(4.0, -rotation + Math.PI, 0, 0.6);
 		return bitmap;
+	}
+
+	function setUpZoomButtons() {
+		final plus = new Gui.Text("+", null, 1.5);
+		plus.dropShadow = {
+			dx: Gui.scale(0.5),
+			dy: Gui.scale(0.5),
+			color: 0xffffff,
+			alpha: 1.0,
+		};
+		plus.textColor = 0;
+		plus.x = Gui.scale(40);
+		plus.y = height * 0.4;
+		plus.textAlign = Center;
+		addChildAt(plus, LAYER_UI);
+		final plusInteractive = new h2d.Interactive(plus.getBounds().width / plus.scaleX * 1.1, plus.getBounds().height / plus.scaleY * 0.8, plus);
+		plusInteractive.x = -plusInteractive.width / 2;
+		plusInteractive.onPush = e -> zooming = 1;
+		plusInteractive.onRelease = e -> zooming = 0;
+
+		final minus = new Gui.Text("-", null, 1.5);
+		minus.dropShadow = {
+			dx: Gui.scale(0.5),
+			dy: Gui.scale(0.5),
+			color: 0xffffff,
+			alpha: 1.0,
+		};
+		minus.textColor = 0;
+		minus.x = Gui.scale(43);
+		minus.y = height * 0.4 + Gui.scale(80);
+		minus.textAlign = Center;
+		addChildAt(minus, LAYER_UI);
+		final minusInteractive = new h2d.Interactive(minus.getBounds().width / minus.scaleX * 1.1, minus.getBounds().height / minus.scaleY * 0.8, minus);
+		minusInteractive.x = -minusInteractive.width / 2;
+		minusInteractive.onPush = e -> zooming = -1;
+		minusInteractive.onRelease = e -> zooming = 0;
 	}
 }
