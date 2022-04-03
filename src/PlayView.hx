@@ -124,10 +124,10 @@ class PlayView extends GameState {
 		final startArea = differ.shapes.Polygon.rectangle(0, 0, 700, 1800);
 
 		for (i in 0...20) {
-			final x = (rand.rand() - 0.5) * 15000;
-			final y = (rand.rand() - 0.5) * 15000;
-			final w = rand.rand() * 2000 + 500;
-			final h = rand.rand() * 2000 + 500;
+			final x = rand.rand() * (2 * 10000 - 3500) - 10000;
+			final y = rand.rand() * (2 * 10000 - 3500) - 10000;
+			final w = rand.rand() * 3000 + 500;
+			final h = rand.rand() * 3000 + 500;
 			final d = differ.shapes.Polygon.rectangle(x, y, w, h, false);
 			if (differ.Collision.shapeWithShape(d, startArea) == null) {
 				water.push({
@@ -554,7 +554,8 @@ class PlayView extends GameState {
 		}
 
 		for (lake in water) {
-			if (differ.Collision.rayWithShape(ray, lake.differ) != null || differ.Collision.rayWithShape(rayReversed, lake.differ) != null)
+			final shape = differ.shapes.Polygon.rectangle(lake.x + lake.w / 2, lake.y + lake.h / 2, lake.w - 130, lake.h - 130);
+			if (differ.Collision.rayWithShape(ray, shape) != null || differ.Collision.rayWithShape(rayReversed, shape) != null)
 				return false;
 		}
 		return true;
