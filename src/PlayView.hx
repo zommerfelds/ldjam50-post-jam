@@ -19,6 +19,13 @@ class PlayView extends GameState {
 		connectedStation:Null<Int>,
 		bitmap:h2d.Bitmap
 	}> = [];
+	final water:Array<{
+		x:Float,
+		y:Float,
+		w:Float,
+		h:Float,
+		differ:differ.shapes.Polygon,
+	}> = [];
 	final stations:Array<h2d.Bitmap> = [];
 	var trackUnderConstruction:{
 		start:Point,
@@ -114,14 +121,42 @@ class PlayView extends GameState {
 
 		points.push(new Point(0, -700));
 		points.push(new Point(0, 700));
-		final startArea = differ.shapes.Polygon.rectangle(0, 0, 700, 1600);
+		final startArea = differ.shapes.Polygon.rectangle(0, 0, 700, 1800);
+
+		for (i in 0...20) {
+			final x = (rand.rand() - 0.5) * 15000;
+			final y = (rand.rand() - 0.5) * 15000;
+			final w = rand.rand() * 2000 + 500;
+			final h = rand.rand() * 2000 + 500;
+			final d = differ.shapes.Polygon.rectangle(x, y, w, h, false);
+			if (differ.Collision.shapeWithShape(d, startArea) == null) {
+				water.push({
+					x: x,
+					y: y,
+					w: w,
+					h: h,
+					differ: d
+				});
+			}
+		}
 
 		for (i in -19...20) {
 			for (j in -19...20) {
+				if (rand.rand() > 0.1)
+					continue;
 				final pt = new Point((i + rand.rand() * 0.55) * 500, (j + rand.rand() * 0.55) * 500);
-				if (rand.rand() < 0.1 && !differ.Collision.pointInPoly(pt.x, pt.y, startArea)) {
-					addHouse(pt, rand.random(4) * Math.PI / 2);
+				if (differ.Collision.pointInPoly(pt.x, pt.y, startArea))
+					continue;
+				var inLake = false;
+				for (lake in water) {
+					if (differ.Collision.pointInPoly(pt.x, pt.y, lake.differ)) {
+						inLake = true;
+						break;
+					}
 				}
+				if (inLake)
+					continue;
+				addHouse(pt, rand.random(4) * Math.PI / 2);
 			}
 		}
 
@@ -517,6 +552,11 @@ class PlayView extends GameState {
 			if (differ.Collision.rayWithShape(ray, shape) != null || differ.Collision.rayWithShape(rayReversed, shape) != null)
 				return false;
 		}
+
+		for (lake in water) {
+			if (differ.Collision.rayWithShape(ray, lake.differ) != null || differ.Collision.rayWithShape(rayReversed, lake.differ) != null)
+				return false;
+		}
 		return true;
 	}
 
@@ -550,6 +590,11 @@ class PlayView extends GameState {
 		drawGr.clear();
 		drawGr.beginFill(0x509450);
 		drawGr.drawRect(-10000, -10000, 20000, 20000);
+
+		drawGr.beginFill(0x63d0ff);
+		for (lake in water) {
+			drawGr.drawRoundedRect(lake.x + 100, lake.y + 100, lake.w - 200, lake.h - 200, 200);
+		}
 
 		for (house in houses) {
 			if (stationPreview != null && stationPreview.distance(house.center) <= STATION_RADIUS && house.connectedStation == null) {
