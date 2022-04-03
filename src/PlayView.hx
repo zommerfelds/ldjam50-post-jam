@@ -35,7 +35,9 @@ class PlayView extends GameState {
 	var payDebtCard:Null<Card> = null;
 	final handCards:Map<h2d.Object, Card> = [];
 	final handCardsContainer = new h2d.Object();
-	final rand = new hxd.Rand(/* seed= */ 10);
+	final seed = Std.random(0x7FFFFFFF);
+	final rand:hxd.Rand;
+
 	var movingHandCard:Null<Card> = null;
 
 	static final STATION_RADIUS = 800.0;
@@ -48,6 +50,12 @@ class PlayView extends GameState {
 
 	var cardsDrawn = 0;
 	var zooming = 0;
+
+	public function new() {
+		super();
+		rand = new hxd.Rand(seed);
+		trace("Random seed: " + seed);
+	}
 
 	override function init() {
 		setUpTiles();
@@ -101,27 +109,28 @@ class PlayView extends GameState {
 	function setUpEntities() {
 		addChild(mapObjects);
 		// It's very slow to compute shadow for all objects together.
+		// But this would have been nice.
 		// mapObjects.filter = new h2d.filter.DropShadow(40.0, Math.PI * 0.7, 0, 0.6);
 
-		points.push(new Point(-400, -700));
-		points.push(new Point(400, 700));
-		// points.push(new Point(800, 2000));
+		points.push(new Point(0, -700));
+		points.push(new Point(0, 700));
+		final startArea = differ.shapes.Polygon.rectangle(0, 0, 700, 1600);
 
-		for (i in -10...10) {
-			for (j in -10...10) {
-				if (rand.rand() < 0.2) {
-					addHouse(new Point((i + rand.rand()) * 900, (j + rand.rand()) * 900), rand.random(4) * Math.PI / 2);
+		for (i in -19...20) {
+			for (j in -19...20) {
+				final pt = new Point((i + rand.rand() * 0.55) * 500, (j + rand.rand() * 0.55) * 500);
+				if (rand.rand() < 0.1 && !differ.Collision.pointInPoly(pt.x, pt.y, startArea)) {
+					addHouse(pt, rand.random(4) * Math.PI / 2);
 				}
 			}
 		}
 
 		tracks.push({start: 0, end: 1});
-		// tracks.push({start: 1, end: 2});
 
 		final stationPos = points[0].multiply(0.1).add(points[1].multiply(0.9));
 		final dir = points[1].sub(points[0]);
 		final rotation = Math.atan2(dir.y, dir.x);
-		addStation(stationPos, rotation);
+		placeStation(null, stationPos, rotation);
 	}
 
 	function onReleaseHandCard(card:Card, pt:Point) {
@@ -232,7 +241,9 @@ class PlayView extends GameState {
 
 	function placeStation(stationCard, pointOnTrack, rotation) {
 		addStation(pointOnTrack, rotation);
-		removeHandCard(stationCard);
+		if (stationCard != null) {
+			removeHandCard(stationCard);
+		}
 
 		final tweenTime = 1.0;
 		for (house in houses) {
@@ -452,7 +463,8 @@ class PlayView extends GameState {
 
 				if (addingTrack) {
 					// The longer you build the less it costs.
-					final newCost = Math.ceil(Math.sqrt(trackUnderConstruction.start.distance(pt) / 600));
+					final x = trackUnderConstruction.start.distance(pt) / 600;
+					final newCost = Math.ceil(Math.pow(x, 0.7) - 0.5);
 					if (newCost <= 5) {
 						trackUnderConstruction.end = pt.clone();
 						trackUnderConstruction.cost = newCost;
