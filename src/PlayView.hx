@@ -275,9 +275,9 @@ class PlayView extends GameState {
 
 	function newCardFromDeck():Card {
 		final type = switch (rand.rand()) {
-			case r if (r < 0.4): Track;
-			case r if (r < 0.7): Station;
-			case r if (r < 0.8): Money;
+			case r if (r < 0.3): Track;
+			case r if (r < 0.6): Station;
+			case r if (r < 0.7): Money;
 			default: Debt;
 		}
 		var card;
