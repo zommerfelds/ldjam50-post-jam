@@ -185,6 +185,7 @@ class PlayView extends GameState {
 					}
 				} else {
 					// Print message about how this works.
+					hxd.Res.invalid.play();
 				}
 				arrangeHand();
 			case Money:
@@ -192,6 +193,7 @@ class PlayView extends GameState {
 					payMoneyForDebt(card);
 				} else {
 					// Print message about how this works.
+					hxd.Res.invalid.play();
 				}
 				arrangeHand();
 			case Station:
@@ -199,10 +201,12 @@ class PlayView extends GameState {
 				if (payDebtCard == null && placingStationValid(pt, mapPt, pointOnTrack.closestPoint)) {
 					placeStation(card, pointOnTrack.closestPoint, pointOnTrack.rotation);
 				} else {
+					hxd.Res.invalid.play();
 					arrangeHand();
 				}
 			default:
 				// Ignore the move.
+				hxd.Res.invalid.play();
 				arrangeHand();
 		}
 	}
@@ -223,6 +227,8 @@ class PlayView extends GameState {
 	}
 
 	function addCardToConstruction(card) {
+		hxd.Res.good.play();
+
 		final placeholder = constructionCardPlaceholders[trackUnderConstruction.paid];
 		trackUnderConstruction.cards.push(card);
 
@@ -250,6 +256,8 @@ class PlayView extends GameState {
 				return;
 			}
 			if (trackUnderConstruction.paid == trackUnderConstruction.cost) {
+				hxd.Res.build.play();
+
 				points.push(trackUnderConstruction.start);
 				points.push(trackUnderConstruction.end);
 				tracks.push({start: points.length - 2, end: points.length - 1});
@@ -262,6 +270,7 @@ class PlayView extends GameState {
 	}
 
 	function payMoneyForDebt(moneyCard) {
+		hxd.Res.good.play();
 		removeHandCard(moneyCard);
 		tween(payDebtCard.obj, 1.0, {
 			scaleX: 0,
@@ -275,6 +284,8 @@ class PlayView extends GameState {
 	}
 
 	function placeStation(stationCard, pointOnTrack, rotation) {
+		hxd.Res.build.play();
+
 		addStation(pointOnTrack, rotation);
 		if (stationCard != null) {
 			removeHandCard(stationCard);
@@ -301,7 +312,8 @@ class PlayView extends GameState {
 		Timer.delay(arrangeHand, Std.int(tweenTime * 0.8 * 1000));
 	}
 
-	function onPlayDeckCard(card:Card, pt:Point) {
+	function flipDeckCard(card:Card, pt:Point) {
+		hxd.Res.beep.play();
 		card.canMove = false;
 		tween(card.obj, 1.0, {
 			x: width / 2,
@@ -329,6 +341,7 @@ class PlayView extends GameState {
 	function handleNewCard(card:Card) {
 		switch (card.type) {
 			case Debt:
+				hxd.Res.bad.play();
 				payDebtCard = card;
 				if (Lambda.exists(handCards, c -> c.type == Money)) {
 					tween(card.obj, 1.0, {
@@ -344,6 +357,7 @@ class PlayView extends GameState {
 						}).ease(motion.easing.Cubic.easeIn).delay(0.2).onComplete(() -> App.instance.switchState(new GameOverView(cardsDrawn)));
 				}
 			case Money | Track | Station:
+				hxd.Res.good.play();
 				// Let card go to hand (it's already assigned to the hand).
 				card.canMove = true;
 				arrangeHand();
@@ -714,7 +728,7 @@ class PlayView extends GameState {
 		deckNext.homePos.x = Gui.scale(80);
 		deckNext.homePos.y = height - Gui.scale(250);
 		deckNext.returnToHomePos(0.0);
-		deckNext.onRelease = onPlayDeckCard;
+		deckNext.onRelease = flipDeckCard;
 	}
 
 	function setUpHand() {
