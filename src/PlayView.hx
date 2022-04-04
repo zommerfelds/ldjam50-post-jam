@@ -303,15 +303,16 @@ class PlayView extends GameState {
 	}
 
 	function payMoneyForDebt(moneyCard) {
+		final tmpPayDebtCard = payDebtCard;
+		payDebtCard = null; // Set to null to you can spend more money during the tween.
 		hxd.Res.good.play();
 		removeHandCard(moneyCard);
-		tween(payDebtCard.obj, 1.0, {
+		tween(tmpPayDebtCard.obj, 1.0, {
 			scaleX: 0,
 			scaleY: 0,
 			alpha: 0,
 		}).onComplete(() -> {
-			payDebtCard.obj.remove();
-			payDebtCard = null;
+			tmpPayDebtCard.obj.remove();
 		});
 		makeNextDeckCard();
 	}
