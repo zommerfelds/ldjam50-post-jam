@@ -190,6 +190,8 @@ class PlayView extends GameState {
 		var mapPt = pt.clone();
 		camera.screenToCamera(mapPt);
 
+		Card.gobalCanMove = false;
+
 		switch (card.type) {
 			case Track:
 				if (payDebtCard == null) {
@@ -351,6 +353,7 @@ class PlayView extends GameState {
 	}
 
 	function flipDeckCard(card:Card, pt:Point) {
+		Card.gobalCanMove = false;
 		hxd.Res.beep.play();
 		card.canMove = false;
 		tween(card.obj, 1.0, {
@@ -369,9 +372,9 @@ class PlayView extends GameState {
 				card.obj.remove();
 				tween(newCard.obj, 0.3, {
 					scaleX: Gui.scale(Card.FULLSCREEN_CARD_SCALE),
-				}).ease(motion.easing.Sine.easeOut).onComplete(() -> {
+				}, /* after= */ () -> {
 					handleNewCard(newCard);
-				});
+				}).ease(motion.easing.Sine.easeOut);
 			});
 		});
 	}
@@ -407,6 +410,7 @@ class PlayView extends GameState {
 			case Backside:
 				throw new Exception("Invalid new card: " + card.type);
 		}
+		Card.gobalCanMove = true;
 	}
 
 	function newCardFromDeck():Card {
@@ -489,6 +493,9 @@ class PlayView extends GameState {
 			card.returnToHomePos();
 			i++;
 		}
+
+		// A bit of a hack
+		Card.gobalCanMove = true;
 	}
 
 	function getClosestPointOnTrack(pt) {

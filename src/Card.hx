@@ -42,6 +42,9 @@ class Card {
 	public var onMove:(Card, Point) -> Void = (card, pt) -> {};
 	public var onClickLocked:(Card) -> Void = (card) -> {};
 
+	// Hack to stop card interactions globally.
+	public static var gobalCanMove = true;
+
 	public function new(type:CardType, parent:h2d.Object, scene:h2d.Scene, pos = null) {
 		this.type = type;
 
@@ -60,7 +63,7 @@ class Card {
 		interactive.y = -CARD_HEIGHT / 2;
 		var isDragging = false;
 		interactive.onPush = (e) -> {
-			if (!canMove)
+			if (!canMove || !gobalCanMove)
 				return;
 			isDragging = true;
 			scene.startCapture((e) -> {
@@ -79,7 +82,7 @@ class Card {
 		};
 		// TODO: hack
 		interactive.onClick = e -> {
-			if (canMove)
+			if (canMove && gobalCanMove)
 				return;
 			onClickLocked(this);
 		};

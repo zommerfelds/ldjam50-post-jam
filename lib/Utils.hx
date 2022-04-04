@@ -86,8 +86,13 @@ class Utils {
 		obj.x = obj.x;
 	}
 
-	/** Tween for Heaps objects0**/
-	public static function tween(obj, time:Float, properties:Dynamic, overwrite = true) {
+	/** Tween for Heaps objects.
+		Careful with onComplete() as it might get dropped if the tween is overwritten. Use `after` instead.
+	**/
+	public static function tween(obj, time:Float, properties:Dynamic, overwrite = true, after = null) {
+		if (after != null) {
+			Actuate.timer(time).onComplete(after);
+		}
 		return Actuate.tween(obj, time, properties, overwrite).onUpdate(() -> posUpdated(obj)).onComplete(() -> posUpdated(obj));
 	}
 
