@@ -43,6 +43,7 @@ class PlayView extends GameState {
 	var payDebtCard:Null<Card> = null;
 	final handCards:Map<h2d.Object, Card> = [];
 	final handCardsContainer = new h2d.Object();
+	final nonHandCardsContainer = new h2d.Object();
 	final seed = Std.random(0x7FFFFFFF);
 	final rand:hxd.Rand;
 
@@ -82,6 +83,8 @@ class PlayView extends GameState {
 		setUpHand();
 
 		setUpZoomButtons();
+
+		addChildAt(nonHandCardsContainer, LAYER_UI);
 
 		addChildAt(tutorialText, LAYER_UI);
 		tutorialText.y = height - Gui.scale(300);
@@ -262,7 +265,7 @@ class PlayView extends GameState {
 
 		// Move to map layer.
 		removeHandCard(card);
-		addChild(card.obj);
+		nonHandCardsContainer.addChild(card.obj);
 
 		var cardPos = toPoint(card.obj);
 		camera.screenToCamera(cardPos);
@@ -448,8 +451,7 @@ class PlayView extends GameState {
 	}
 
 	function newNonHandCard(type:CardType) {
-		// TODO: The LAYER thing is likely wrong here, not sure how it works.
-		return new Card(type, this, this, LAYER_UI);
+		return new Card(type, nonHandCardsContainer, this);
 	}
 
 	function getPositionForNewHandCard(type:CardType) {
