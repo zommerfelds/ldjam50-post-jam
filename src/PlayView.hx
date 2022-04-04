@@ -267,7 +267,7 @@ class PlayView extends GameState {
 
 		// Move to map layer.
 		removeHandCard(card);
-		nonHandCardsContainer.addChild(card.obj);
+		addChild(card.obj);
 
 		var cardPos = toPoint(card.obj);
 		camera.screenToCamera(cardPos);
