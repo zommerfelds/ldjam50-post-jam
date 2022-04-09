@@ -4052,6 +4052,7 @@ IntroView.prototype = $extend(GameState.prototype,{
 		centeringFlow.set_maxWidth(this.width);
 		centeringFlow.set_layout(h2d_FlowLayout.Vertical);
 		centeringFlow.set_verticalSpacing(Gui.scaleAsInt(50));
+		centeringFlow.set_padding(Gui.scaleAsInt(50));
 		new Text("We're running out of money!",centeringFlow).set_textAlign(h2d_Align.MultilineCenter);
 		centeringFlow.addSpacing(Gui.scaleAsInt(50));
 		new Text("Boss, I don't think we cast last much longer.",centeringFlow,0.8).set_textAlign(h2d_Align.MultilineCenter);
@@ -4080,10 +4081,8 @@ Lambda.exists = function(it,f) {
 	}
 	return false;
 };
-Lambda.fold = function(it,f,first) {
-	var x = $getIterator(it);
-	while(x.hasNext()) first = f(x.next(),first);
-	return first;
+Lambda.empty = function(it) {
+	return !$getIterator(it).hasNext();
 };
 Math.__name__ = "Math";
 var MenuView = function() {
@@ -4114,14 +4113,15 @@ MenuView.prototype = $extend(GameState.prototype,{
 		},Colors.BLUE,null,0.8);
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 		new Text("Game by Christian Zommerfelds",centeringFlow,0.5);
-		new Text("for Ludum Dare 50",centeringFlow,0.5);
-		new Text("Version: " + hxd_Res.get_loader().loadCache("version.txt",hxd_res_Resource).entry.getText() + " (post jam)",centeringFlow,0.5);
+		new Text("Ludum Dare 50, post jam edition",centeringFlow,0.5);
+		new Text("Version: " + hxd_Res.get_loader().loadCache("version.txt",hxd_res_Resource).entry.getText(),centeringFlow,0.5);
 	}
 	,__class__: MenuView
 });
 var PlayView = function() {
 	this.zooming = 0;
 	this.cardsDrawn = 0;
+	this.deckNextCards = [];
 	this.mapObjects = new h2d_Object();
 	this.tileStation = hxd_Res.get_loader().loadCache("station.png",hxd_res_Image).toTile();
 	this.tileHouse = hxd_Res.get_loader().loadCache("house.png",hxd_res_Image).toTile();
@@ -4144,7 +4144,7 @@ var PlayView = function() {
 	this.points = [];
 	GameState.call(this);
 	this.rand = new hxd_Rand(this.seed);
-	haxe_Log.trace("Random seed: " + this.seed,{ fileName : "src/PlayView.hx", lineNumber : 66, className : "PlayView", methodName : "new"});
+	haxe_Log.trace("Random seed: " + this.seed,{ fileName : "src/PlayView.hx", lineNumber : 69, className : "PlayView", methodName : "new"});
 };
 $hxClasses["PlayView"] = PlayView;
 PlayView.__name__ = "PlayView";
@@ -4192,7 +4192,6 @@ PlayView.prototype = $extend(GameState.prototype,{
 		placeholder.scaleX *= v;
 		placeholder.posChanged = true;
 		placeholder.scaleY *= v;
-		placeholder.alpha = 0.5;
 		placeholder.set_visible(false);
 		this.constructionCardPlaceholders.push(placeholder);
 		var placeholder = new h2d_Bitmap(Card.CARD_TILES.get(CardType.Track),this);
@@ -4201,7 +4200,6 @@ PlayView.prototype = $extend(GameState.prototype,{
 		placeholder.scaleX *= v;
 		placeholder.posChanged = true;
 		placeholder.scaleY *= v;
-		placeholder.alpha = 0.5;
 		placeholder.set_visible(false);
 		this.constructionCardPlaceholders.push(placeholder);
 		var placeholder = new h2d_Bitmap(Card.CARD_TILES.get(CardType.Track),this);
@@ -4210,7 +4208,6 @@ PlayView.prototype = $extend(GameState.prototype,{
 		placeholder.scaleX *= v;
 		placeholder.posChanged = true;
 		placeholder.scaleY *= v;
-		placeholder.alpha = 0.5;
 		placeholder.set_visible(false);
 		this.constructionCardPlaceholders.push(placeholder);
 		var placeholder = new h2d_Bitmap(Card.CARD_TILES.get(CardType.Track),this);
@@ -4219,7 +4216,6 @@ PlayView.prototype = $extend(GameState.prototype,{
 		placeholder.scaleX *= v;
 		placeholder.posChanged = true;
 		placeholder.scaleY *= v;
-		placeholder.alpha = 0.5;
 		placeholder.set_visible(false);
 		this.constructionCardPlaceholders.push(placeholder);
 		var placeholder = new h2d_Bitmap(Card.CARD_TILES.get(CardType.Track),this);
@@ -4228,7 +4224,6 @@ PlayView.prototype = $extend(GameState.prototype,{
 		placeholder.scaleX *= v;
 		placeholder.posChanged = true;
 		placeholder.scaleY *= v;
-		placeholder.alpha = 0.5;
 		placeholder.set_visible(false);
 		this.constructionCardPlaceholders.push(placeholder);
 	}
@@ -4384,16 +4379,18 @@ PlayView.prototype = $extend(GameState.prototype,{
 					} else {
 						this.showMessage("Drag this card on the construction to pay a track.");
 						hxd_Res.get_loader().loadCache("invalid.wav",hxd_res_Sound).play();
+						this.arrangeHand();
 					}
 				} else {
 					this.showMessage("First, start a construction by touching and dragging from a track.");
 					hxd_Res.get_loader().loadCache("invalid.wav",hxd_res_Sound).play();
+					this.arrangeHand();
 				}
 			} else {
 				this.showMessage("You need to pay the debt first.");
 				hxd_Res.get_loader().loadCache("invalid.wav",hxd_res_Sound).play();
+				this.arrangeHand();
 			}
-			this.arrangeHand();
 			break;
 		case 1:
 			var pointOnTrack = this.getClosestPointOnTrack(mapPt);
@@ -4462,10 +4459,16 @@ PlayView.prototype = $extend(GameState.prototype,{
 		_this.scaleX *= v;
 		_this.posChanged = true;
 		_this.scaleY *= v;
-		this.trackUnderConstruction.paid++;
+		card.canMove = false;
 		Utils.tween(card.obj,0.7,{ x : placeholder.x, y : placeholder.y, scaleX : placeholder.scaleX, scaleY : placeholder.scaleY}).ease(motion_easing_Cubic.easeOut).onComplete(function() {
+			var _this = card.obj;
+			if(_this != null && _this.parent != null) {
+				_this.parent.removeChild(_this);
+			}
+			var fh = _gthis.trackUnderConstruction;
+			fh.paid++;
 			if(_gthis.trackUnderConstruction == null) {
-				haxe_Log.trace("ERROR: trackUnderConstruction shouldn't be null!",{ fileName : "src/PlayView.hx", lineNumber : 288, className : "PlayView", methodName : "addCardToConstruction"});
+				haxe_Log.trace("ERROR: trackUnderConstruction shouldn't be null!",{ fileName : "src/PlayView.hx", lineNumber : 294, className : "PlayView", methodName : "addCardToConstruction"});
 				return;
 			}
 			if(_gthis.trackUnderConstruction.paid == _gthis.trackUnderConstruction.cost) {
@@ -4473,16 +4476,9 @@ PlayView.prototype = $extend(GameState.prototype,{
 				_gthis.points.push(_gthis.trackUnderConstruction.start);
 				_gthis.points.push(_gthis.trackUnderConstruction.end);
 				_gthis.tracks.push({ start : _gthis.points.length - 2, end : _gthis.points.length - 1});
-				var _g = 0;
-				var _g1 = _gthis.trackUnderConstruction.cards;
-				while(_g < _g1.length) {
-					var _this = _g1[_g++].obj;
-					if(_this != null && _this.parent != null) {
-						_this.parent.removeChild(_this);
-					}
-				}
 				_gthis.trackUnderConstruction = null;
 			}
+			_gthis.arrangeHand();
 		});
 	}
 	,payMoneyForDebt: function(moneyCard) {
@@ -4505,6 +4501,7 @@ PlayView.prototype = $extend(GameState.prototype,{
 		if(stationCard != null) {
 			this.removeHandCard(stationCard);
 		}
+		var moneyEarned = 0.0;
 		var _g = 0;
 		var _g1 = this.houses;
 		while(_g < _g1.length) {
@@ -4516,6 +4513,7 @@ PlayView.prototype = $extend(GameState.prototype,{
 			if(Math.sqrt(dx * dx + dy * dy) <= PlayView.STATION_RADIUS && house.connectedStation == null) {
 				house.connectedStation = this.stations.length - 1;
 				if(makeMoney) {
+					++moneyEarned;
 					var card = this.newHandCard(CardType.Money);
 					var _this = house.center;
 					var screenPt = new h2d_col_Point(_this.x,_this.y);
@@ -4539,11 +4537,13 @@ PlayView.prototype = $extend(GameState.prototype,{
 				}
 			}
 		}
-		if(makeMoney) {
+		if(moneyEarned > 0) {
 			haxe_Timer.delay(function() {
 				hxd_Res.get_loader().loadCache("good.wav",hxd_res_Sound).play();
 				_gthis.arrangeHand();
 			},800. | 0);
+		} else {
+			this.arrangeHand();
 		}
 	}
 	,flipDeckCard: function(card,pt) {
@@ -4598,32 +4598,66 @@ PlayView.prototype = $extend(GameState.prototype,{
 		Card.gobalCanMove = true;
 	}
 	,newCardFromDeck: function() {
-		var shares = [{ card : CardType.Track, units : 2.0},{ card : CardType.Station, units : 1.0},{ card : CardType.Money, units : 0.5},{ card : CardType.Debt, units : 1.0 + this.cardsDrawn * 0.02}];
-		this.cardsDrawn++;
-		var total = Lambda.fold(shares,function(share,acc) {
-			return share.units + acc;
-		},0);
-		var _this = this.rand;
-		_this.seed = 36969 * (_this.seed & 65535) + (_this.seed >> 16);
-		_this.seed2 = 18000 * (_this.seed2 & 65535) + (_this.seed2 >> 16);
-		var x = (((_this.seed << 16) + _this.seed2 | 0) & 1073741823) % 10007 / 10007.0 * total;
-		var type = null;
-		var _g = 0;
-		while(_g < shares.length) {
-			var share = shares[_g];
-			++_g;
-			if(x < share.units) {
-				type = share.card;
-				break;
+		if(Lambda.empty(this.deckNextCards)) {
+			var batch1 = [];
+			batch1.push(CardType.Track);
+			batch1.push(CardType.Track);
+			batch1.push(CardType.Track);
+			batch1.push(CardType.Station);
+			var _g = 0;
+			var _g1 = 2 + this.cardsDrawn * 0.015 | 0;
+			while(_g < _g1) {
+				++_g;
+				batch1.push(CardType.Debt);
 			}
-			x -= share.units;
+			var _this = this.rand;
+			var len = batch1.length;
+			var _g = 0;
+			while(_g < len) {
+				++_g;
+				_this.seed = 36969 * (_this.seed & 65535) + (_this.seed >> 16);
+				_this.seed2 = 18000 * (_this.seed2 & 65535) + (_this.seed2 >> 16);
+				var x = (((_this.seed << 16) + _this.seed2 | 0) & 1073741823) % len;
+				_this.seed = 36969 * (_this.seed & 65535) + (_this.seed >> 16);
+				_this.seed2 = 18000 * (_this.seed2 & 65535) + (_this.seed2 >> 16);
+				var y = (((_this.seed << 16) + _this.seed2 | 0) & 1073741823) % len;
+				var tmp = batch1[x];
+				batch1[x] = batch1[y];
+				batch1[y] = tmp;
+			}
+			var _g = 0;
+			while(_g < batch1.length) this.deckNextCards.push(batch1[_g++]);
+			var batch2 = [];
+			batch2.push(CardType.Track);
+			batch2.push(CardType.Track);
+			batch2.push(CardType.Station);
+			var _g = 0;
+			var _g1 = 3 + this.cardsDrawn * 0.015 | 0;
+			while(_g < _g1) {
+				++_g;
+				batch2.push(CardType.Debt);
+			}
+			var _this = this.rand;
+			var len = batch2.length;
+			var _g = 0;
+			while(_g < len) {
+				++_g;
+				_this.seed = 36969 * (_this.seed & 65535) + (_this.seed >> 16);
+				_this.seed2 = 18000 * (_this.seed2 & 65535) + (_this.seed2 >> 16);
+				var x = (((_this.seed << 16) + _this.seed2 | 0) & 1073741823) % len;
+				_this.seed = 36969 * (_this.seed & 65535) + (_this.seed >> 16);
+				_this.seed2 = 18000 * (_this.seed2 & 65535) + (_this.seed2 >> 16);
+				var y = (((_this.seed << 16) + _this.seed2 | 0) & 1073741823) % len;
+				var tmp = batch2[x];
+				batch2[x] = batch2[y];
+				batch2[y] = tmp;
+			}
+			var _g = 0;
+			while(_g < batch2.length) this.deckNextCards.push(batch2[_g++]);
 		}
-		var card;
-		if(type == CardType.Debt) {
-			card = this.newNonHandCard(CardType.Debt);
-		} else {
-			card = this.newHandCard(type);
-		}
+		this.cardsDrawn++;
+		var type = this.deckNextCards.pop();
+		var card = type == CardType.Debt ? this.newNonHandCard(CardType.Debt) : this.newHandCard(type);
 		card.canMove = false;
 		return card;
 	}
@@ -4666,13 +4700,18 @@ PlayView.prototype = $extend(GameState.prototype,{
 		var _g1 = this.handCardsContainer.children;
 		while(_g < _g1.length) {
 			var card = this.handCards.h[_g1[_g++].__id__];
-			var tmp = this.width * 0.5;
-			var tmp1 = Math.min(this.width * 0.75,numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
-			card.homePos.x = tmp + tmp1;
+			if(numCards > 1) {
+				var tmp = this.width * 0.5;
+				var tmp1 = Math.min(this.width * 0.75,numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
+				card.homePos.x = tmp + tmp1;
+				card.homeRotation = (i / (numCards - 1) - 0.5) * Math.PI * 0.2;
+			} else {
+				card.homePos.x = this.width * 0.5;
+				card.homeRotation = 0;
+			}
 			var tmp2 = this.height;
 			var tmp3 = Gui.scale(50);
 			card.homePos.y = tmp2 - tmp3;
-			card.homeRotation = (i / (numCards - 1) - 0.5) * Math.PI * 0.2;
 			card.homeScale = Card.NORMAL_CARD_SCALE;
 			card.returnToHomePos();
 			++i;
@@ -4728,12 +4767,25 @@ PlayView.prototype = $extend(GameState.prototype,{
 			var pt = new h2d_col_Point(_this.x,_this.y);
 			this._cameras[0].screenToCamera(pt);
 			var closestPoint = this.getClosestPointOnTrack(pt).closestPoint;
-			var addingTrack;
+			var addingTrack = false;
 			var dx = closestPoint.x - pt.x;
 			var dy = closestPoint.y - pt.y;
-			addingTrack = Math.sqrt(dx * dx + dy * dy) < 100 && (this.trackUnderConstruction == null || this.trackUnderConstruction.paid == 0);
-			if(addingTrack) {
+			if(Math.sqrt(dx * dx + dy * dy) < 100 && (this.trackUnderConstruction == null || this.trackUnderConstruction.paid == 0)) {
 				this.trackUnderConstruction = { start : closestPoint, end : pt, cost : 1, paid : 0, cards : [], valid : false};
+				addingTrack = true;
+			} else {
+				var tmp;
+				if(this.trackUnderConstruction != null && this.trackUnderConstruction.paid == 0) {
+					var _this = this.trackUnderConstruction.end;
+					var dx = _this.x - pt.x;
+					var dy = _this.y - pt.y;
+					tmp = Math.sqrt(dx * dx + dy * dy) < 100;
+				} else {
+					tmp = false;
+				}
+				if(tmp) {
+					addingTrack = true;
+				}
 			}
 			var startDragPos_y;
 			var startDragPos_x;
@@ -4761,7 +4813,7 @@ PlayView.prototype = $extend(GameState.prototype,{
 					var _this = _gthis.trackUnderConstruction.start;
 					var dx = _this.x - pt.x;
 					var dy = _this.y - pt.y;
-					var newCost = Math.ceil(Math.pow(Math.sqrt(dx * dx + dy * dy) / 600,0.7) - 0.5);
+					var newCost = Math.ceil(Math.pow(Math.sqrt(dx * dx + dy * dy) / 600,0.6));
 					if(newCost <= 5) {
 						_gthis.trackUnderConstruction.end = new h2d_col_Point(pt.x,pt.y);
 						_gthis.trackUnderConstruction.cost = newCost;
@@ -5013,6 +5065,7 @@ PlayView.prototype = $extend(GameState.prototype,{
 				while(_g < _g1) {
 					var i = _g++;
 					this.constructionCardPlaceholders[i].set_visible(true);
+					this.constructionCardPlaceholders[i].alpha = this.trackUnderConstruction.paid > i ? 1.0 : 0.5;
 					var _this = this.constructionCardPlaceholders[i];
 					var v = popup_x - w / 2 + placeholderWidth / 2 + Gui.scale(10) / this._cameras[0].scaleX + i * (placeholderWidth + Gui.scale(10) / this._cameras[0].scaleX);
 					_this.posChanged = true;
@@ -5074,6 +5127,8 @@ PlayView.prototype = $extend(GameState.prototype,{
 	,setUpHand: function() {
 		this.addChildAt(this.handCardsContainer,PlayView.LAYER_UI);
 		this.newHandCard(CardType.Money);
+		this.newHandCard(CardType.Money);
+		this.newHandCard(CardType.Track);
 		this.newHandCard(CardType.Track);
 		this.newHandCard(CardType.Track);
 		this.newHandCard(CardType.Station);
@@ -8945,6 +9000,13 @@ h2d_Flow.prototype = $extend(h2d_Object.prototype,{
 		}
 		return this.needReflow = v;
 	}
+	,set_padding: function(v) {
+		this.set_paddingLeft(v);
+		this.set_paddingTop(v);
+		this.set_paddingRight(v);
+		this.set_paddingBottom(v);
+		return v;
+	}
 	,set_scrollPosY: function(v) {
 		if(this.needReflow) {
 			this.reflow();
@@ -10026,7 +10088,7 @@ h2d_Flow.prototype = $extend(h2d_Object.prototype,{
 	,onAfterReflow: function() {
 	}
 	,__class__: h2d_Flow
-	,__properties__: $extend(h2d_Object.prototype.__properties__,{set_scrollPosY:"set_scrollPosY",set_fillHeight:"set_fillHeight",set_fillWidth:"set_fillWidth",set_layout:"set_layout",get_outerHeight:"get_outerHeight",get_outerWidth:"get_outerWidth",get_innerHeight:"get_innerHeight",get_innerWidth:"get_innerWidth",set_backgroundTile:"set_backgroundTile",set_enableInteractive:"set_enableInteractive",set_verticalSpacing:"set_verticalSpacing",set_paddingBottom:"set_paddingBottom",set_paddingTop:"set_paddingTop",set_paddingRight:"set_paddingRight",set_paddingLeft:"set_paddingLeft",set_maxWidth:"set_maxWidth",set_minHeight:"set_minHeight",set_verticalAlign:"set_verticalAlign",set_horizontalAlign:"set_horizontalAlign",set_needReflow:"set_needReflow"})
+	,__properties__: $extend(h2d_Object.prototype.__properties__,{set_scrollPosY:"set_scrollPosY",set_fillHeight:"set_fillHeight",set_fillWidth:"set_fillWidth",set_layout:"set_layout",get_outerHeight:"get_outerHeight",get_outerWidth:"get_outerWidth",get_innerHeight:"get_innerHeight",get_innerWidth:"get_innerWidth",set_backgroundTile:"set_backgroundTile",set_enableInteractive:"set_enableInteractive",set_verticalSpacing:"set_verticalSpacing",set_paddingBottom:"set_paddingBottom",set_paddingTop:"set_paddingTop",set_paddingRight:"set_paddingRight",set_paddingLeft:"set_paddingLeft",set_padding:"set_padding",set_maxWidth:"set_maxWidth",set_minHeight:"set_minHeight",set_verticalAlign:"set_verticalAlign",set_horizontalAlign:"set_horizontalAlign",set_needReflow:"set_needReflow"})
 });
 var h2d_Kerning = function(c,o) {
 	this.prevChar = c;
@@ -45719,7 +45781,7 @@ TextButton.BUTTON_TEXT_COLOR_ENABLED = -1;
 TextButton.BUTTON_TEXT_COLOR_DISABLED = -5592406;
 PlayView.LAYER_MAP = 0;
 PlayView.LAYER_UI = 1;
-PlayView.STATION_RADIUS = 800.0;
+PlayView.STATION_RADIUS = 1000.0;
 PlayView.MAP_PIXEL_SCALE = 9;
 Xml.Element = 0;
 Xml.PCData = 1;
