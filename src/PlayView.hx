@@ -326,10 +326,12 @@ class PlayView extends GameState {
 		}
 
 		final tweenTime = 1.0;
+		var moneyEarned = 0.0;
 		for (house in houses) {
 			if (pointOnTrack.distance(house.center) <= STATION_RADIUS && house.connectedStation == null) {
 				house.connectedStation = stations.length - 1;
 				if (makeMoney) {
+					moneyEarned++;
 					final card = newHandCard(Money);
 					final screenPt = house.center.clone();
 					camera.cameraToScreen(screenPt);
@@ -345,11 +347,13 @@ class PlayView extends GameState {
 				}
 			}
 		}
-		if (makeMoney) {
+		if (moneyEarned > 0) {
 			Timer.delay(() -> {
 				hxd.Res.good.play();
 				arrangeHand();
 			}, Std.int(tweenTime * 0.8 * 1000));
+		} else {
+			arrangeHand();
 		}
 	}
 
