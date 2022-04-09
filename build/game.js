@@ -4114,8 +4114,8 @@ MenuView.prototype = $extend(GameState.prototype,{
 		},Colors.BLUE,null,0.8);
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 		new Text("Game by Christian Zommerfelds",centeringFlow,0.5);
-		new Text("Made in 48h for Ludum Dare 50",centeringFlow,0.5);
-		new Text("Version: " + hxd_Res.get_loader().loadCache("version.txt",hxd_res_Resource).entry.getText(),centeringFlow,0.5);
+		new Text("for Ludum Dare 50",centeringFlow,0.5);
+		new Text("Version: " + hxd_Res.get_loader().loadCache("version.txt",hxd_res_Resource).entry.getText() + " (post jam)",centeringFlow,0.5);
 	}
 	,__class__: MenuView
 });
