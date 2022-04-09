@@ -2,7 +2,7 @@
 
 For the original jam entry, see here: https://github.com/zommerfelds/ldjam50
 
-[Live demo](https://zommerfelds.github.io/ldjam50/)
+[Live demo](https://zommerfelds.github.io/ldjam50-post-jam/)
 
 Based on [this template](https://github.com/zommerfelds/gamejam-template).
 
