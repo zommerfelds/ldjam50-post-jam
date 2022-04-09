@@ -1,4 +1,6 @@
-# My game entry for Ludum Dare 50: Debt Train
+# Post jam version of Ludum Dare 50: Debt Train
+
+For the original jam entry, see here: https://github.com/zommerfelds/ldjam50
 
 [Live demo](https://zommerfelds.github.io/ldjam50/)
 
