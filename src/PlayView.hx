@@ -489,11 +489,17 @@ class PlayView extends GameState {
 	function arrangeHand() {
 		var i = 0;
 		final numCards = handCardsContainer.children.length;
+
 		for (cardObj in handCardsContainer.children) {
 			final card = handCards[cardObj];
-			card.homePos.x = width * 0.5 + Math.min(width * 0.75, numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
+			if (numCards > 1) {
+				card.homePos.x = width * 0.5 + Math.min(width * 0.75, numCards * Gui.scale(60)) * (i / (numCards - 1) - 0.5);
+				card.homeRotation = (i / (numCards - 1) - 0.5) * Math.PI * 0.2;
+			} else {
+				card.homePos.x = width * 0.5;
+				card.homeRotation = 0;
+			}
 			card.homePos.y = height - Gui.scale(50);
-			card.homeRotation = (i / (numCards - 1) - 0.5) * Math.PI * 0.2;
 			card.homeScale = Card.NORMAL_CARD_SCALE;
 			card.returnToHomePos();
 			i++;
