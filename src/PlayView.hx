@@ -49,7 +49,7 @@ class PlayView extends GameState {
 
 	var movingHandCard:Null<Card> = null;
 
-	static final STATION_RADIUS = 800.0;
+	static final STATION_RADIUS = 1000.0;
 	static final MAP_PIXEL_SCALE = 9;
 
 	final tileHouse = hxd.Res.house.toTile();
@@ -572,7 +572,7 @@ class PlayView extends GameState {
 				if (addingTrack) {
 					// The longer you build the less it costs.
 					final x = trackUnderConstruction.start.distance(pt) / 600;
-					final newCost = Math.ceil(Math.pow(x, 0.7) - 0.5);
+					final newCost = Math.ceil(Math.pow(x, 0.6));
 					if (newCost <= 5) {
 						trackUnderConstruction.end = pt.clone();
 						trackUnderConstruction.cost = newCost;
