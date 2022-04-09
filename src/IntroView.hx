@@ -13,6 +13,7 @@ class IntroView extends GameState {
 		centeringFlow.maxWidth = width;
 		centeringFlow.layout = Vertical;
 		centeringFlow.verticalSpacing = Gui.scaleAsInt(50);
+		centeringFlow.padding = Gui.scaleAsInt(50);
 
 		final t = new Gui.Text("We're running out of money!", centeringFlow);
 		t.textAlign = MultilineCenter;

@@ -423,18 +423,29 @@ class PlayView extends GameState {
 
 	function newCardFromDeck():Card {
 		if (deckNextCards.empty()) {
-			deckNextCards.push(Track);
-			deckNextCards.push(Track);
-			deckNextCards.push(Track);
-			deckNextCards.push(Station);
-			if (rand.rand() < 0.5) {
-				deckNextCards.push(Money);
+			final batch1 = [];
+			batch1.push(Track);
+			batch1.push(Track);
+			batch1.push(Track);
+			batch1.push(Station);
+			for (i in 0...Std.int(2 + cardsDrawn * 0.015)) {
+				batch1.push(Debt);
 			}
-			for (i in 0...Std.int(1 + cardsDrawn * 0.02)) {
-				deckNextCards.push(Debt);
+			rand.shuffle(batch1);
+			for (c in batch1) {
+				deckNextCards.push(c);
 			}
-
-			rand.shuffle(deckNextCards);
+			final batch2 = [];
+			batch2.push(Track);
+			batch2.push(Track);
+			batch2.push(Station);
+			for (i in 0...Std.int(3 + cardsDrawn * 0.015)) {
+				batch2.push(Debt);
+			}
+			rand.shuffle(batch2);
+			for (c in batch2) {
+				deckNextCards.push(c);
+			}
 		}
 
 		cardsDrawn++;
@@ -799,6 +810,8 @@ class PlayView extends GameState {
 	function setUpHand() {
 		addChildAt(handCardsContainer, LAYER_UI);
 		newHandCard(Money);
+		newHandCard(Money);
+		newHandCard(Track);
 		newHandCard(Track);
 		newHandCard(Track);
 		newHandCard(Station);
