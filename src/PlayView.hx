@@ -101,7 +101,6 @@ class PlayView extends GameState {
 		for (i in 0...5) {
 			final placeholder = new h2d.Bitmap(Card.CARD_TILES[Track], this);
 			placeholder.scale(Gui.scale(3) / camera.scaleX);
-			placeholder.alpha = 0.5;
 			placeholder.visible = false;
 			constructionCardPlaceholders.push(placeholder);
 		}
@@ -207,16 +206,18 @@ class PlayView extends GameState {
 						} else {
 							showMessage("Drag this card on the construction to pay a track.");
 							hxd.Res.invalid.play();
+							arrangeHand();
 						}
 					} else {
 						showMessage("First, start a construction by touching and dragging from a track.");
 						hxd.Res.invalid.play();
+						arrangeHand();
 					}
 				} else {
 					showMessage("You need to pay the debt first.");
 					hxd.Res.invalid.play();
+					arrangeHand();
 				}
-				arrangeHand();
 			case Money:
 				if (payDebtCard != null) {
 					payMoneyForDebt(card);
@@ -277,8 +278,7 @@ class PlayView extends GameState {
 		card.obj.x = cardPos.x;
 		card.obj.y = cardPos.y;
 		card.obj.scale(1 / camera.scaleX);
-
-		trackUnderConstruction.paid++;
+		card.canMove = false;
 
 		tween(card.obj, 0.7, {
 			x: placeholder.x,
@@ -286,6 +286,9 @@ class PlayView extends GameState {
 			scaleX: placeholder.scaleX,
 			scaleY: placeholder.scaleY,
 		}).ease(motion.easing.Cubic.easeOut).onComplete(() -> {
+			card.obj.remove();
+
+			trackUnderConstruction.paid++;
 			if (trackUnderConstruction == null) {
 				// TODO: this happens sometimes, but I don't know how to repro yet.
 				trace("ERROR: trackUnderConstruction shouldn't be null!");
@@ -297,11 +300,9 @@ class PlayView extends GameState {
 				points.push(trackUnderConstruction.start);
 				points.push(trackUnderConstruction.end);
 				tracks.push({start: points.length - 2, end: points.length - 1});
-				for (card in trackUnderConstruction.cards) {
-					card.obj.remove();
-				}
 				trackUnderConstruction = null;
 			}
+			arrangeHand();
 		});
 	}
 
@@ -760,6 +761,7 @@ class PlayView extends GameState {
 
 				for (i in 0...trackUnderConstruction.cost) {
 					constructionCardPlaceholders[i].visible = true;
+					constructionCardPlaceholders[i].alpha = trackUnderConstruction.paid > i ? 1.0 : 0.5;
 					constructionCardPlaceholders[i].x = popup.x - w / 2 + placeholderWidth / 2 + Gui.scale(10) / camera.scaleX
 						+ i * (placeholderWidth + Gui.scale(10) / camera.scaleX);
 					constructionCardPlaceholders[i].y = popup.y + offsetY + triangleSize + h / 2;
