@@ -543,9 +543,9 @@ class PlayView extends GameState {
 			camera.screenToCamera(pt);
 
 			final closestPoint = getClosestPointOnTrack(pt).closestPoint;
-			// For now you can't stop a construction in progress.
-			final addingTrack = (closestPoint.distance(pt) < 100 && (trackUnderConstruction == null || trackUnderConstruction.paid == 0));
-			if (addingTrack) {
+			var addingTrack = false;
+
+			if (closestPoint.distance(pt) < 100 && (trackUnderConstruction == null || trackUnderConstruction.paid == 0)) {
 				trackUnderConstruction = {
 					start: closestPoint,
 					end: pt,
@@ -554,6 +554,12 @@ class PlayView extends GameState {
 					cards: [],
 					valid: false,
 				};
+				addingTrack = true;
+			} else if (trackUnderConstruction != null
+				&& trackUnderConstruction.paid == 0
+				&& trackUnderConstruction.end.distance(pt) < 100) {
+				// Allow to edit current construction, if you haven't paid anything yet.
+				addingTrack = true;
 			}
 
 			final startDragPos = new Point(event.relX, event.relY);
