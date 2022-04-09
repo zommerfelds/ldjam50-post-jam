@@ -4,7 +4,9 @@
 
 Based on [this template](https://github.com/zommerfelds/gamejam-template).
 
-## Progress
+# Progress
+
+Some notes for what a did at each day.
 
 ## After day 1
 
