@@ -25,7 +25,7 @@ class MenuView extends GameState {
 		centeringFlow.addSpacing(Gui.scaleAsInt(100));
 
 		new Gui.Text("Game by Christian Zommerfelds", centeringFlow, 0.5);
-		new Gui.Text("Ludum Dare 50, post-jam edition", centeringFlow, 0.5);
+		new Gui.Text("Ludum Dare 50, post jam edition", centeringFlow, 0.5);
 		new Gui.Text("Version: " + hxd.Res.version.entry.getText(), centeringFlow, 0.5);
 	}
 }

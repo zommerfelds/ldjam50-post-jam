@@ -57,6 +57,9 @@ class PlayView extends GameState {
 
 	final mapObjects = new h2d.Object();
 
+	// The next cards on top of the deck. Once empty, a new set of cards is generated, kind of like in Tetris.
+	final deckNextCards:Array<CardType> = [];
+
 	var cardsDrawn = 0;
 	var zooming = 0;
 
@@ -419,30 +422,27 @@ class PlayView extends GameState {
 	}
 
 	function newCardFromDeck():Card {
-		// Probabilities in "shares" out of sum.
-		final shares = [
-			{card: Track, units: 2.0},
-			{card: Station, units: 1.0},
-			{card: Money, units: 0.5},
-			{card: Debt, units: 1.0 + cardsDrawn * 0.02}, // Game gets harder and harder.
-		];
-		cardsDrawn++;
-		final total = shares.fold((share, acc) -> share.units + acc, 0);
-		var x = rand.rand() * total;
-		var type = null;
-		for (share in shares) {
-			if (x < share.units) {
-				type = share.card;
-				break;
+		if (deckNextCards.empty()) {
+			deckNextCards.push(Track);
+			deckNextCards.push(Track);
+			deckNextCards.push(Track);
+			deckNextCards.push(Station);
+			if (rand.rand() < 0.5) {
+				deckNextCards.push(Money);
 			}
-			x -= share.units;
+			for (i in 0...Std.int(1 + cardsDrawn * 0.02)) {
+				deckNextCards.push(Debt);
+			}
+
+			rand.shuffle(deckNextCards);
 		}
 
-		var card;
-		if (type == Debt) {
-			card = newNonHandCard(Debt);
+		cardsDrawn++;
+		final type = deckNextCards.pop();
+		final card = if (type == Debt) {
+			newNonHandCard(Debt);
 		} else {
-			card = newHandCard(type);
+			newHandCard(type);
 		}
 		card.canMove = false;
 		return card;
